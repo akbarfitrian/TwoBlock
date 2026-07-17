@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { createPublicClient, http, isAddress, isHash, getAddress } from "viem";
 import { activeArcChain } from "@/lib/arc/chain";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -65,8 +66,8 @@ export async function POST(req: NextRequest) {
 
   await completeQuestOnce(supabase, checksummed, "get_verified");
 
-  try {
-    after(async () => {
+  waitUntil(
+    (async () => {
       try {
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txRef, timeout: 15_000 });
         await supabase
@@ -77,10 +78,8 @@ export async function POST(req: NextRequest) {
         console.error(`[TwoBlock] Verifikasi tx pembelian ${txRef} gagal:`, err);
         await supabase.from("verification_purchases").update({ tx_status: "failed" }).eq("tx_ref", txRef);
       }
-    });
-  } catch (err) {
-    console.error("[TwoBlock] after() unavailable, skipping background tx verification:", err);
-  }
+    })()
+  );
 
   return NextResponse.json({ status: "pending", purchase });
 }

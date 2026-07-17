@@ -13,7 +13,7 @@ const publicClient = createPublicClient({
 export async function POST(req: NextRequest) {
   const { fromWallet, toWallet, postId, amountUsdc, txRef } = await req.json();
 
-  if (![fromWallet, toWallet].every(isAddress) || !isHash(txRef) || amountUsdc <= 0) {
+  if (![fromWallet, toWallet].every((addr) => isAddress(addr)) || !isHash(txRef) || amountUsdc <= 0) {
     return NextResponse.json({ error: "Invalid tip payload" }, { status: 400 });
   }
 
