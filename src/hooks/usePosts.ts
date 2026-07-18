@@ -160,6 +160,27 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
     refresh();
   }, [refresh]);
 
+  // Background polling: merges newly created posts in at the top without
+  // touching what's already loaded. A plain refresh() would replace the
+  // whole list with just the first page and silently drop anything the
+  // user already pulled in via "Load more" — this avoids that.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const page = await fetchPage(null);
+        setPosts((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const freshOnly = page.filter((p) => !existingIds.has(p.id));
+          if (freshOnly.length === 0) return prev;
+          return [...freshOnly, ...prev];
+        });
+      } catch (err) {
+        console.error("[TwoBlock] Failed to poll for new posts:", err);
+      }
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchPage]);
+
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || posts.length === 0) return;
     setLoadingMore(true);

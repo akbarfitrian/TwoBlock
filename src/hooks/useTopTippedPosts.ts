@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { displayName } from "@/lib/utils/format";
 import type { VerificationTier } from "@/lib/types";
+
+const REFRESH_INTERVAL_MS = 30_000;
 
 export interface TopTippedPost {
   postId: string;
@@ -19,12 +21,13 @@ export function useTopTippedPosts(limit = 5) {
   const [posts, setPosts] = useState<TopTippedPost[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    const supabase = createSupabaseBrowserClient();
+  // `silent` refetches (background polling) update the data without flipping
+  // `loading` back to true, so the panel doesn't flash "Loading…" every cycle.
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
+      const supabase = createSupabaseBrowserClient();
 
-    (async () => {
-      setLoading(true);
       const { data: leaderboardRows } = await supabase
         .from("post_leaderboard_alltime")
         .select("post_id, total_tips_received")
@@ -32,10 +35,8 @@ export function useTopTippedPosts(limit = 5) {
 
       const postIds = (leaderboardRows ?? []).map((r) => r.post_id);
       if (postIds.length === 0) {
-        if (!cancelled) {
-          setPosts([]);
-          setLoading(false);
-        }
+        setPosts([]);
+        if (!opts?.silent) setLoading(false);
         return;
       }
 
@@ -64,16 +65,18 @@ export function useTopTippedPosts(limit = 5) {
         })
         .filter((p): p is TopTippedPost => p !== null);
 
-      if (!cancelled) {
-        setPosts(merged);
-        setLoading(false);
-      }
-    })();
+      setPosts(merged);
+      if (!opts?.silent) setLoading(false);
+    },
+    [limit]
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [limit]);
+  useEffect(() => {
+    load();
 
-  return { posts, loading };
+    const interval = setInterval(() => load({ silent: true }), REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  return { posts, loading, refresh: load };
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTwoBlockAuth } from "@/hooks/useTwoBlockAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useConversations } from "@/hooks/useMessages";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton";
 import { LogoMark, HomeIcon, SearchIcon, UserIcon, VerifiedNavIcon, MessageIcon, BellIcon, TrophyIcon, SettingsIcon, FeatherIcon } from "@/components/icons";
 
@@ -41,6 +42,7 @@ function NavLink({
 export function Sidebar() {
   const { walletAddress } = useTwoBlockAuth();
   const { unreadCount } = useNotifications();
+  const { unreadCount: unreadMessages } = useConversations();
   const pathname = usePathname();
 
   return (
@@ -73,6 +75,7 @@ export function Sidebar() {
               active={pathname.startsWith("/messages")}
               icon={<MessageIcon size={22} filled={pathname.startsWith("/messages")} />}
               label="Messages"
+              badge={unreadMessages}
             />
             <NavLink
               href="/notifications"

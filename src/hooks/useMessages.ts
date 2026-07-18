@@ -12,6 +12,7 @@ export interface MessageThread {
   lastMessage: string;
   lastMessageAt: string;
   lastMessageFromMe: boolean;
+  unread: boolean;
 }
 
 export interface ChatMessage {
@@ -46,9 +47,14 @@ export function useConversations() {
 
   useEffect(() => {
     load();
+
+    const interval = setInterval(load, 30_000);
+    return () => clearInterval(interval);
   }, [load]);
 
-  return { threads, loading, refresh: load };
+  const unreadCount = threads.filter((t) => t.unread).length;
+
+  return { threads, loading, unreadCount, refresh: load };
 }
 
 export function useMessages(otherWallet: string | null) {
@@ -77,6 +83,9 @@ export function useMessages(otherWallet: string | null) {
 
   useEffect(() => {
     load();
+
+    const interval = setInterval(load, 10_000);
+    return () => clearInterval(interval);
   }, [load]);
 
   const send = useCallback(

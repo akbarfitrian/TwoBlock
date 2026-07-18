@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
 
+const REFRESH_INTERVAL_MS = 30_000;
+
 export interface UseViewedProfileState {
   profile: Profile | null;
   followerCount: number;
@@ -22,37 +24,48 @@ export function useViewedProfile(walletAddress: string | null): UseViewedProfile
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!walletAddress) return;
-    setLoading(true);
-    setNotFound(false);
-    const supabase = createSupabaseBrowserClient();
+  // `silent` refetches (background polling) update the data without flipping
+  // `loading` back to true, so ProfilePage (which gates its whole render on
+  // `loading`) doesn't flash back to a "Loading profile…" screen every cycle.
+  const load = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!walletAddress) return;
+      if (!opts?.silent) {
+        setLoading(true);
+        setNotFound(false);
+      }
+      const supabase = createSupabaseBrowserClient();
 
-    const [{ data: profileRow }, followers, following, posts] = await Promise.all([
-      supabase.from("profiles").select("*").eq("wallet_address", walletAddress).maybeSingle(),
-      supabase.from("follows").select("follower_wallet", { count: "exact", head: true }).eq("following_wallet", walletAddress),
-      supabase.from("follows").select("following_wallet", { count: "exact", head: true }).eq("follower_wallet", walletAddress),
-      supabase
-        .from("posts")
-        .select("id", { count: "exact", head: true })
-        .eq("author_wallet", walletAddress)
-        .is("deleted_at", null),
-    ]);
+      const [{ data: profileRow }, followers, following, posts] = await Promise.all([
+        supabase.from("profiles").select("*").eq("wallet_address", walletAddress).maybeSingle(),
+        supabase.from("follows").select("follower_wallet", { count: "exact", head: true }).eq("following_wallet", walletAddress),
+        supabase.from("follows").select("following_wallet", { count: "exact", head: true }).eq("follower_wallet", walletAddress),
+        supabase
+          .from("posts")
+          .select("id", { count: "exact", head: true })
+          .eq("author_wallet", walletAddress)
+          .is("deleted_at", null),
+      ]);
 
-    if (!profileRow) {
-      setNotFound(true);
-      setProfile(null);
-    } else {
-      setProfile(profileRow as Profile);
-    }
-    setFollowerCount(followers.count ?? 0);
-    setFollowingCount(following.count ?? 0);
-    setPostCount(posts.count ?? 0);
-    setLoading(false);
-  }, [walletAddress]);
+      if (!profileRow) {
+        setNotFound(true);
+        setProfile(null);
+      } else {
+        setProfile(profileRow as Profile);
+      }
+      setFollowerCount(followers.count ?? 0);
+      setFollowingCount(following.count ?? 0);
+      setPostCount(posts.count ?? 0);
+      if (!opts?.silent) setLoading(false);
+    },
+    [walletAddress]
+  );
 
   useEffect(() => {
     load();
+
+    const interval = setInterval(() => load({ silent: true }), REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [load]);
 
   return { profile, followerCount, followingCount, postCount, loading, notFound, refresh: load };

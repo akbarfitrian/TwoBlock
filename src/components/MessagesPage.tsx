@@ -30,7 +30,9 @@ export function MessagesPage() {
         <Link
           key={thread.otherWallet}
           href={`/messages/${thread.otherWallet}`}
-          className="flex items-center gap-3 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface/40"
+          className={`flex items-center gap-3 border-b border-surface-border px-4 py-3 transition-colors hover:bg-surface/40 ${
+            thread.unread ? "bg-brand-blue/5" : ""
+          }`}
         >
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-[12px] font-semibold text-white"
@@ -47,12 +49,15 @@ export function MessagesPage() {
               <span className="truncate">{displayName(thread.otherUsername, thread.otherWallet)}</span>
               <VerifiedBadge tier={thread.otherVerificationTier} size={13} />
             </div>
-            <div className="truncate text-[13px] text-ink-muted">
+            <div className={`truncate text-[13px] ${thread.unread ? "font-semibold text-ink" : "text-ink-muted"}`}>
               {thread.lastMessageFromMe ? "You: " : ""}
               {thread.lastMessage}
             </div>
           </div>
-          <span className="shrink-0 text-[12px] text-ink-faint">{formatRelativeTime(thread.lastMessageAt)}</span>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <span className="text-[12px] text-ink-faint">{formatRelativeTime(thread.lastMessageAt)}</span>
+            {thread.unread && <span className="h-2 w-2 rounded-full bg-brand-blue" aria-label="Unread" />}
+          </div>
         </Link>
       ))}
     </div>

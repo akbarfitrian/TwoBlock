@@ -58,15 +58,13 @@ export function SettingsPage() {
           aria-checked={theme === "dark"}
           aria-label="Toggle dark mode"
           onClick={toggleTheme}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${
-            theme === "dark" ? "bg-brand-gradient" : "bg-surface-hover"
+          className={`flex h-7 w-14 shrink-0 items-center rounded-full p-0.5 transition-all duration-200 ${
+            theme === "dark"
+              ? "justify-end bg-brand-gradient"
+              : "justify-start bg-surface-hover"
           }`}
         >
-          <span
-            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-card transition-transform duration-200 ${
-              theme === "dark" ? "translate-x-[22px]" : "translate-x-0.5"
-            }`}
-          />
+          <span className="h-6 w-6 rounded-full bg-white shadow-card transition-all duration-200" />
         </button>
       </div>
     </div>

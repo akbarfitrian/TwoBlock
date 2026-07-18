@@ -30,6 +30,18 @@ export async function GET(req: NextRequest) {
       console.error("[TwoBlock] Failed to fetch thread messages:", error);
       return NextResponse.json({ error: "Failed to load conversation" }, { status: 500 });
     }
+
+    // Opening a conversation marks it as read for this wallet.
+    const { error: readError } = await supabase
+      .from("message_reads")
+      .upsert(
+        { wallet_address: me, thread_key: threadKey, last_read_at: new Date().toISOString() },
+        { onConflict: "wallet_address,thread_key" }
+      );
+    if (readError) {
+      console.error("[TwoBlock] Failed to mark thread as read:", readError);
+    }
+
     return NextResponse.json({ messages: data ?? [] });
   }
 
@@ -46,17 +58,33 @@ export async function GET(req: NextRequest) {
   }
 
   const seen = new Set<string>();
-  const rows: { otherWallet: string; lastMessage: string; lastMessageAt: string; lastMessageFromMe: boolean }[] = [];
+  const rows: {
+    threadKey: string;
+    otherWallet: string;
+    lastMessage: string;
+    lastMessageAt: string;
+    lastMessageFromMe: boolean;
+  }[] = [];
   for (const row of data ?? []) {
     if (seen.has(row.thread_key)) continue;
     seen.add(row.thread_key);
     const otherWallet = row.from_wallet === me ? row.to_wallet : row.from_wallet;
     rows.push({
+      threadKey: row.thread_key,
       otherWallet,
       lastMessage: row.content,
       lastMessageAt: row.created_at,
       lastMessageFromMe: row.from_wallet === me,
     });
+  }
+
+  const { data: reads } = await supabase
+    .from("message_reads")
+    .select("thread_key, last_read_at")
+    .eq("wallet_address", me);
+  const lastReadByThread = new Map<string, string>();
+  for (const r of reads ?? []) {
+    lastReadByThread.set(r.thread_key, r.last_read_at);
   }
 
   const otherWallets = rows.map((r) => r.otherWallet);
@@ -78,12 +106,20 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const threads = rows.map((r) => ({
-    ...r,
-    otherUsername: profileByWallet.get(r.otherWallet)?.username ?? null,
-    otherAvatarUrl: profileByWallet.get(r.otherWallet)?.avatar_url ?? null,
-    otherVerificationTier: profileByWallet.get(r.otherWallet)?.verification_tier ?? "free",
-  }));
+  const threads = rows.map((r) => {
+    const lastReadAt = lastReadByThread.get(r.threadKey);
+    const unread = !r.lastMessageFromMe && (!lastReadAt || new Date(r.lastMessageAt) > new Date(lastReadAt));
+    return {
+      otherWallet: r.otherWallet,
+      lastMessage: r.lastMessage,
+      lastMessageAt: r.lastMessageAt,
+      lastMessageFromMe: r.lastMessageFromMe,
+      unread,
+      otherUsername: profileByWallet.get(r.otherWallet)?.username ?? null,
+      otherAvatarUrl: profileByWallet.get(r.otherWallet)?.avatar_url ?? null,
+      otherVerificationTier: profileByWallet.get(r.otherWallet)?.verification_tier ?? "free",
+    };
+  });
 
   return NextResponse.json({ threads });
 }
