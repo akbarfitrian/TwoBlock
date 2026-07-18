@@ -2,6 +2,7 @@
 
 import { createWalletClient, custom, getAddress, parseUnits, type Address } from "viem";
 import { activeArcChain } from "@/lib/arc/chain";
+import { twoBlockPaymentsAbi, getTwoBlockPaymentsAddress } from "@/lib/contracts/twoBlockPayments";
 
 export interface SendTipParams {
   toWallet: Address;
@@ -30,6 +31,8 @@ export function useSendTip() {
       throw new Error("No wallet detected. Install MetaMask (or another browser wallet) first.");
     }
 
+    const contractAddress = getTwoBlockPaymentsAddress();
+
     const accounts = (await window.ethereum.request({
       method: "eth_requestAccounts",
     })) as Address[];
@@ -52,10 +55,16 @@ export function useSendTip() {
     let hash: `0x${string}` | undefined;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        hash = await walletClient.sendTransaction({
+        // Tips now route through the TwoBlockPayments contract instead of a
+        // raw P2P transfer, so every tip emits a canonical `Tipped` event
+        // the backend can verify against instead of trusting client input.
+        hash = await walletClient.writeContract({
           account: fromWallet,
           chain: activeArcChain,
-          to: toWallet,
+          address: contractAddress,
+          abi: twoBlockPaymentsAbi,
+          functionName: "tip",
+          args: [toWallet, postId ?? ""],
           value: valueWei,
         });
         break;

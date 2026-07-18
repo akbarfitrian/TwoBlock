@@ -2,11 +2,15 @@
   "name": "twoblock",
   "version": "0.1.0",
   "private": true,
+  "type": "commonjs",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "contracts:compile": "hardhat compile",
+    "contracts:deploy:testnet": "hardhat run contracts/scripts/deploy.ts --network arcTestnet",
+    "contracts:deploy:mainnet": "hardhat run contracts/scripts/deploy.ts --network arcMainnet"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -23,6 +27,10 @@
     "typescript": "^5.5.0",
     "tailwindcss": "^3.4.10",
     "postcss": "^8.4.41",
-    "autoprefixer": "^10.4.20"
+    "autoprefixer": "^10.4.20",
+    "hardhat": "^2.22.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.4.5"
   }
 }

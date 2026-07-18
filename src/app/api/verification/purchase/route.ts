@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
-import { createPublicClient, http, isAddress, isHash, getAddress } from "viem";
+import { createPublicClient, http, isAddress, isHash, getAddress, parseEventLogs } from "viem";
 import { activeArcChain } from "@/lib/arc/chain";
+import {
+  twoBlockPaymentsAbi,
+  getTwoBlockPaymentsAddress,
+  indexToTier,
+  indexToBilling,
+} from "@/lib/contracts/twoBlockPayments";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { completeQuestOnce } from "@/lib/quests";
 
@@ -27,6 +33,56 @@ export async function POST(req: NextRequest) {
   }
 
   const checksummed = getAddress(wallet);
+
+  // Verification purchases now go through TwoBlockPayments.purchaseVerification()
+  // instead of a raw P2P transfer to the treasury wallet. Verify the actual
+  // on-chain event instead of trusting the client-submitted wallet/tier/
+  // billing/amount.
+  let contractAddress;
+  try {
+    contractAddress = getTwoBlockPaymentsAddress();
+  } catch (err) {
+    console.error("[TwoBlock] Payments contract address not configured:", err);
+    return NextResponse.json({ error: "Payments contract is not configured on the server" }, { status: 500 });
+  }
+
+  let receipt;
+  try {
+    receipt = await publicClient.waitForTransactionReceipt({ hash: txRef, timeout: 15_000 });
+  } catch (err) {
+    console.error(`[TwoBlock] Could not fetch receipt for verification purchase tx ${txRef}:`, err);
+    return NextResponse.json({ error: "Could not find that transaction on-chain yet. Try again shortly." }, { status: 400 });
+  }
+
+  if (getAddress(receipt.to ?? "0x0000000000000000000000000000000000000000") !== contractAddress) {
+    return NextResponse.json({ error: "Transaction was not sent to the TwoBlockPayments contract" }, { status: 400 });
+  }
+
+  const [purchaseEvent] = parseEventLogs({
+    abi: twoBlockPaymentsAbi,
+    eventName: "VerificationPurchased",
+    logs: receipt.logs,
+  });
+
+  if (!purchaseEvent) {
+    return NextResponse.json({ error: "Transaction did not emit a VerificationPurchased event" }, { status: 400 });
+  }
+
+  const { wallet: onChainWallet, tier: onChainTierIndex, billing: onChainBillingIndex, amount: onChainAmountWei } =
+    purchaseEvent.args;
+  const onChainAmountUsdc = Number(onChainAmountWei) / 1e18;
+  const onChainTier = indexToTier(onChainTierIndex);
+  const onChainBilling = indexToBilling(onChainBillingIndex);
+
+  if (
+    getAddress(onChainWallet) !== checksummed ||
+    onChainTier !== tier ||
+    onChainBilling !== billing ||
+    Math.abs(onChainAmountUsdc - amountUsdc) > 1e-9
+  ) {
+    return NextResponse.json({ error: "On-chain event doesn't match the submitted purchase details" }, { status: 400 });
+  }
+
   const supabase = createSupabaseServerClient();
 
   const { data: pricing, error: pricingError } = await supabase
@@ -69,17 +125,15 @@ export async function POST(req: NextRequest) {
   waitUntil(
     (async () => {
       try {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txRef, timeout: 15_000 });
         await supabase
           .from("verification_purchases")
           .update({ tx_status: receipt.status === "success" ? "confirmed" : "failed" })
           .eq("tx_ref", txRef);
       } catch (err) {
-        console.error(`[TwoBlock] Verifikasi tx pembelian ${txRef} gagal:`, err);
-        await supabase.from("verification_purchases").update({ tx_status: "failed" }).eq("tx_ref", txRef);
+        console.error(`[TwoBlock] Failed to finalize tx status for purchase ${txRef}:`, err);
       }
     })()
   );
 
-  return NextResponse.json({ status: "pending", purchase });
+  return NextResponse.json({ status: receipt.status === "success" ? "confirmed" : "failed", purchase });
 }

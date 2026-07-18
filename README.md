@@ -1,6 +1,8 @@
 # TwoBlock
 
-**TwoBlock** is a decentralized, wallet-native social media platform built on the **Arc** blockchain. Instead of usernames and passwords, identity on TwoBlock *is* your crypto wallet — every post, tip, follow, and reaction is tied directly to an on-chain address. It combines the familiar feel of a modern social feed with Web3-native primitives: peer-to-peer USDC tipping, on-chain-verified transactions, tiered wallet verification, and gamified quests — all without requiring a centralized login system.
+**TwoBlock** is a decentralized, wallet-native social media platform built on the **Arc** blockchain. Instead of usernames and passwords, identity on TwoBlock *is* your crypto wallet — every post, tip, follow, and reaction is tied directly to an on-chain address. It combines the familiar feel of a modern social feed with Web3-native primitives: smart-contract-routed USDC tipping, on-chain-verified transactions, tiered wallet verification, and gamified quests — all without requiring a centralized login system.
+
+> **Payments go through a contract, not P2P.** Tips and verification-tier purchases are both routed through a single on-chain contract, [`contracts/TwoBlockPayments.sol`](contracts/TwoBlockPayments.sol) — not raw wallet-to-wallet transfers. The contract emits `Tipped`/`VerificationPurchased` events that the backend verifies against instead of trusting client-submitted amounts/addresses. See [Smart contract](#smart-contract-twoblockpaymentssol) below.
 
 > Built with Next.js 14 (App Router), TypeScript, Supabase (Postgres + Row Level Security), and viem, deployed on Vercel.
 
@@ -25,8 +27,8 @@ Arc is used here specifically because it treats **USDC as its native gas currenc
 - **Wallet-native authentication** — connects to `window.ethereum` directly (MetaMask or any injected wallet), with automatic network switching/adding for the Arc chain. No embedded wallet, no third-party auth provider, no App ID.
 - **Feed & posts** — text posts, image attachments, and reposts, with per-tier daily quotas and character limits.
 - **On-chain polls** — Verified Max users can attach polls to posts; votes are open to every tier.
-- **USDC tipping** — send USDC directly to another wallet from a post, with the transaction verified against the chain in the background before being marked as confirmed.
-- **Verification tiers** — `Verified`, `Verified Pro`, and `Verified Max`, purchased with on-chain USDC payments to a dedicated treasury wallet. Higher tiers unlock larger post quotas, longer posts, image attachments, post editing, and poll creation.
+- **USDC tipping** — send USDC to another wallet from a post via the `TwoBlockPayments` contract's `tip()` function; the backend verifies the tx by decoding the contract's `Tipped` event before marking it confirmed.
+- **Verification tiers** — `Verified`, `Verified Pro`, and `Verified Max`, purchased by calling `purchaseVerification()` on the same contract, which forwards USDC to the treasury wallet. Higher tiers unlock larger post quotas, longer posts, image attachments, post editing, and poll creation.
 - **Follows & profiles** — follow/unfollow, public profile pages per wallet, editable bio/avatar/username with a cooldown on username changes.
 - **Reactions** — Agree/Disagree reactions on posts, feeding into notifications and quest progress.
 - **Direct messages** — wallet-to-wallet messaging.
@@ -46,6 +48,42 @@ Arc is used here specifically because it treats **USDC as its native gas currenc
 - **Storage:** Supabase Storage buckets for avatars and post images
 - **Styling:** Tailwind CSS
 - **Hosting:** [Vercel](https://vercel.com/)
+
+---
+
+## Smart contract (`TwoBlockPayments.sol`)
+
+Both payment flows — tips and verification purchases — go through a single deployed contract instead of a raw P2P native transfer:
+
+```
+contracts/
+├── TwoBlockPayments.sol   # the contract
+└── scripts/deploy.ts      # hardhat deploy script
+hardhat.config.ts          # compiles contracts/, targets Arc testnet/mainnet
+```
+
+**Why route through a contract instead of P2P:**
+- The contract emits `Tipped(from, to, amount, postId)` and `VerificationPurchased(wallet, tier, billing, amount)` events. The backend (`api/tips`, `api/verification/purchase`) decodes these directly from the transaction receipt and rejects the request if they don't match what the client submitted, instead of trusting client-supplied `to`/`amount` values against a raw transfer's `to`/`value`.
+- Verification funds always land wherever the contract's `treasury` currently points, which the contract owner can update with `setTreasury()` — no need to change the frontend or redeploy to rotate treasury wallets.
+- If a recipient can't accept a push transfer (e.g. a contract wallet with no payable fallback), funds are held in `pendingWithdrawals` instead of reverting the sender's transaction or getting stuck; the recipient calls `withdraw()` to pull them out.
+
+**Functions:**
+| Function | Called from | Effect |
+|---|---|---|
+| `tip(address to, string postId)` (payable) | `src/lib/actions/sendTip.ts` | Forwards `msg.value` to `to`, emits `Tipped` |
+| `purchaseVerification(uint8 tier, uint8 billing)` (payable) | `src/hooks/useVerification.ts` | Forwards `msg.value` to `treasury`, emits `VerificationPurchased` |
+| `withdraw()` | anyone with a pending balance | Pulls out escrowed funds from a failed forward |
+| `setTreasury(address)` | contract owner only | Updates where verification payments are forwarded |
+
+**Deploying:**
+```bash
+npm install
+# set DEPLOYER_PRIVATE_KEY and NEXT_PUBLIC_VERIFICATION_TREASURY_WALLET in .env.local
+npm run contracts:deploy:testnet
+# copy the printed address into NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS in .env.local
+```
+
+If the ABI ever changes, keep `src/lib/contracts/twoBlockPayments.ts` (the frontend/backend's copy of the ABI) in sync with `contracts/TwoBlockPayments.sol`.
 
 ---
 
@@ -81,9 +119,10 @@ twoblock/
 │   ├── components/                           # UI components (Feed, PostCard, PostComposer, modals, etc.)
 │   ├── hooks/                                # Client hooks (auth, posts, follows, messages, quests, etc.)
 │   └── lib/
-│       ├── actions/sendTip.ts                # Sends USDC as a native transfer via viem WalletClient
+│       ├── actions/sendTip.ts                # Calls TwoBlockPayments.tip() via viem WalletClient
+│       ├── contracts/twoBlockPayments.ts      # Contract ABI, address getter, tier/billing enum mapping
 │       ├── arc/chain.ts                      # Arc chain definitions (testnet + mainnet placeholder)
-│       ├── verificationTreasury.ts           # Treasury wallet resolution
+│       ├── verificationTreasury.ts           # (deprecated) treasury wallet resolution — see contract's treasury()
 │       ├── quests.ts                         # Quest catalog + progress helpers
 │       ├── tierLimits.ts                     # Client-side cache of per-tier quotas/limits
 │       ├── types.ts                          # Shared domain types (Profile, Post, PostWithAuthor, ...)
@@ -91,9 +130,11 @@ twoblock/
 │       └── supabase/
 │           ├── client.ts                     # Browser client (anon key)
 │           └── server.ts                     # Server client (service role key)
-├── supabase/migrations/                      # Ordered SQL migrations (0001 → 0008)
+├── contracts/                                 # TwoBlockPayments.sol + hardhat deploy script
+├── supabase/migrations/                      # Ordered SQL migrations (0001 → 0009)
 ├── public/                                   # Static assets (logo, icons)
 ├── .env.example
+├── hardhat.config.ts                         # Compiles/deploys contracts/ to Arc
 ├── next.config.js
 ├── tailwind.config.js
 ├── tsconfig.json
