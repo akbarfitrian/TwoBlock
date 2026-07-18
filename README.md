@@ -70,8 +70,8 @@ hardhat.config.ts          # compiles contracts/, targets Arc testnet/mainnet
 **Functions:**
 | Function | Called from | Effect |
 |---|---|---|
-| `tip(address to, string postId)` (payable) | `src/lib/actions/sendTip.ts` | Forwards `msg.value` to `to`, emits `Tipped` |
-| `purchaseVerification(uint8 tier, uint8 billing)` (payable) | `src/hooks/useVerification.ts` | Forwards `msg.value` to `treasury`, emits `VerificationPurchased` |
+| `tip(address to, string postId)` (payable) | `src/backend/lib/send-tip.ts` | Forwards `msg.value` to `to`, emits `Tipped` |
+| `purchaseVerification(uint8 tier, uint8 billing)` (payable) | `src/frontend/hooks/useVerification.ts` | Forwards `msg.value` to `treasury`, emits `VerificationPurchased` |
 | `withdraw()` | anyone with a pending balance | Pulls out escrowed funds from a failed forward |
 | `setTreasury(address)` | contract owner only | Updates where verification payments are forwarded |
 
@@ -83,64 +83,81 @@ npm run contracts:deploy:testnet
 # copy the printed address into NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS in .env.local
 ```
 
-If the ABI ever changes, keep `src/lib/contracts/twoBlockPayments.ts` (the frontend/backend's copy of the ABI) in sync with `contracts/TwoBlockPayments.sol`.
+If the ABI ever changes, keep `src/shared/contracts/two-block-payments.ts` (the frontend/backend's copy of the ABI) in sync with `contracts/TwoBlockPayments.sol`.
 
 ---
 
 ## Project structure
 
+The codebase is split into `frontend/`, `backend/`, and `shared/` under `src/`. `src/app/` stays at the top level because Next.js's App Router requires it there for file-system routing — but within it, `app/api/**` is the backend's HTTP surface and everything else under `app/` is frontend routing (pages that render the components below).
+
 ```
 twoblock/
 ├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── profiles/onboard/route.ts     # Creates a profile on first wallet connect (username required)
-│   │   │   ├── profiles/settings/route.ts    # Update bio/avatar/username
-│   │   │   ├── profiles/sync/route.ts        # Sync/refresh profile state
-│   │   │   ├── tips/route.ts                 # Records a tip and verifies the on-chain transaction
-│   │   │   ├── posts/route.ts                # Create text/poll posts and reposts (quota + limits by tier)
-│   │   │   ├── posts/[id]/vote/route.ts      # Vote on a poll (final; open to every tier)
-│   │   │   ├── follows/route.ts              # Follow (POST) / unfollow (DELETE)
-│   │   │   ├── reactions/route.ts            # Set (POST) / remove (DELETE) Agree/Disagree reactions
-│   │   │   ├── messages/route.ts             # Direct messages
-│   │   │   ├── notifications/route.ts        # Notifications feed
-│   │   │   ├── quests/route.ts               # Quest progress
-│   │   │   └── verification/purchase/route.ts# Records a verification tier purchase/renewal
-│   │   ├── profile/[wallet]/page.tsx         # Public profile page for any wallet
-│   │   ├── messages/                         # Direct message inbox and threads
+│   ├── app/                                   # Next.js App Router (routing only — both frontend pages and backend API routes)
+│   │   ├── api/                                # Backend: HTTP routes, all using the Supabase service-role client
+│   │   │   ├── profiles/onboard/route.ts        # Creates a profile on first wallet connect (username required)
+│   │   │   ├── profiles/settings/route.ts       # Update bio/avatar/username
+│   │   │   ├── profiles/sync/route.ts           # Sync/refresh profile state
+│   │   │   ├── tips/route.ts                    # Records a tip and verifies the on-chain transaction
+│   │   │   ├── posts/route.ts                   # Create text/poll posts and reposts (quota + limits by tier)
+│   │   │   ├── posts/[id]/vote/route.ts         # Vote on a poll (final; open to every tier)
+│   │   │   ├── follows/route.ts                 # Follow (POST) / unfollow (DELETE)
+│   │   │   ├── reactions/route.ts               # Set (POST) / remove (DELETE) Agree/Disagree reactions
+│   │   │   ├── messages/route.ts                # Direct messages
+│   │   │   ├── notifications/route.ts           # Notifications feed
+│   │   │   ├── quests/route.ts                  # Quest progress
+│   │   │   └── verification/purchase/route.ts   # Records a verification tier purchase/renewal
+│   │   ├── profile/[wallet]/page.tsx            # Frontend: public profile page for any wallet
+│   │   ├── messages/                            # Direct message inbox and threads
 │   │   ├── notifications/page.tsx
 │   │   ├── quests/page.tsx
 │   │   ├── search/page.tsx
 │   │   ├── settings/page.tsx
-│   │   ├── verified/page.tsx                 # "Get Verified" purchase flow
-│   │   ├── layout.tsx                        # Root layout — three-column shell (Sidebar / main / RightPanel)
-│   │   ├── page.tsx                          # Home feed
-│   │   └── providers.tsx                     # Global provider mount point
-│   ├── components/                           # UI components (Feed, PostCard, PostComposer, modals, etc.)
-│   ├── hooks/                                # Client hooks (auth, posts, follows, messages, quests, etc.)
-│   └── lib/
-│       ├── actions/sendTip.ts                # Calls TwoBlockPayments.tip() via viem WalletClient
-│       ├── contracts/twoBlockPayments.ts      # Contract ABI, address getter, tier/billing enum mapping
-│       ├── arc/chain.ts                      # Arc chain definitions (testnet + mainnet placeholder)
-│       ├── verificationTreasury.ts           # (deprecated) treasury wallet resolution — see contract's treasury()
-│       ├── quests.ts                         # Quest catalog + progress helpers
-│       ├── tierLimits.ts                     # Client-side cache of per-tier quotas/limits
-│       ├── types.ts                          # Shared domain types (Profile, Post, PostWithAuthor, ...)
-│       ├── utils/                            # Formatting, linkify, upload helpers
-│       └── supabase/
-│           ├── client.ts                     # Browser client (anon key)
-│           └── server.ts                     # Server client (service role key)
+│   │   ├── verified/page.tsx                    # "Get Verified" purchase flow
+│   │   ├── layout.tsx                           # Root layout — three-column shell (Sidebar / main / RightPanel)
+│   │   ├── page.tsx                             # Home feed
+│   │   └── providers.tsx                        # Global provider mount point
+│   │
+│   ├── frontend/                              # Everything that only ever runs in the browser
+│   │   ├── components/                          # UI components (Feed, PostCard, PostComposer, modals, etc.)
+│   │   ├── hooks/                                # Client hooks (auth, posts, follows, messages, quests, etc.)
+│   │   └── lib/
+│   │       ├── supabase-client.ts                # Browser Supabase client (anon key)
+│   │       ├── format.ts                         # Formatting helpers
+│   │       ├── linkify.tsx                       # Turns URLs/@mentions in post text into links
+│   │       └── upload.ts                         # Avatar/post-image upload to Supabase Storage
+│   │
+│   ├── backend/                               # Everything that only ever runs on the server
+│   │   └── lib/
+│   │       ├── supabase-server.ts                # Server Supabase client (service role key — bypasses RLS)
+│   │       ├── send-tip.ts                       # Calls TwoBlockPayments.tip() via viem WalletClient
+│   │       └── verification-treasury.ts          # (deprecated) treasury wallet resolution — see contract's treasury()
+│   │
+│   ├── shared/                                # Used by both frontend and backend
+│   │   ├── types.ts                              # Domain types (Profile, Post, PostWithAuthor, ...)
+│   │   ├── tier-limits.ts                        # Per-tier quotas/limits (client cache + server-enforced source)
+│   │   ├── quests.ts                             # Quest catalog + progress helpers
+│   │   ├── chain.ts                              # Arc chain definitions (testnet + mainnet placeholder)
+│   │   └── contracts/
+│   │       └── two-block-payments.ts             # Contract ABI, address getter, tier/billing enum mapping
+│   │
+│   └── types/
+│       └── ethereum.d.ts                      # Ambient `window.ethereum` (EIP-1193) type declarations
+│
 ├── contracts/                                 # TwoBlockPayments.sol + hardhat deploy script
-├── supabase/migrations/                      # Ordered SQL migrations (0001 → 0009)
-├── public/                                   # Static assets (logo, icons)
+├── supabase/migrations/                       # Ordered SQL migrations (0001 → 0009)
+├── public/                                    # Static assets (logo, icons)
 ├── .env.example
-├── hardhat.config.ts                         # Compiles/deploys contracts/ to Arc
+├── hardhat.config.ts                          # Compiles/deploys contracts/ to Arc
 ├── next.config.js
 ├── tailwind.config.js
 ├── tsconfig.json
 ├── package.json
 └── vercel.json
 ```
+
+**Import alias:** `@/*` maps to `src/*`, so imports read as `@/frontend/components/...`, `@/backend/lib/...`, or `@/shared/...`.
 
 ---
 
@@ -157,7 +174,7 @@ The project depends on two Web3/backend libraries used directly in the codebase:
 - **`viem`** — Arc chain definition, transaction sending via a `WalletClient` wrapped around `window.ethereum`, address/unit helpers (`parseUnits`, `isAddress`, ...), and `waitForTransactionReceipt`.
 - **`@supabase/supabase-js`** — browser client (anon key) and server client (service role key).
 
-There is no third-party wallet SDK — wallet connection goes straight to MetaMask (or any other injected wallet) via `window.ethereum` (EIP-1193). See `src/hooks/useTwoBlockAuth.tsx` and `src/lib/actions/sendTip.ts`.
+There is no third-party wallet SDK — wallet connection goes straight to MetaMask (or any other injected wallet) via `window.ethereum` (EIP-1193). See `src/frontend/hooks/useTwoBlockAuth.tsx` and `src/backend/lib/send-tip.ts`.
 
 ### 2. Configure environment variables
 
@@ -205,8 +222,8 @@ Open [http://localhost:3000](http://localhost:3000) — you'll see a **Connect W
 #### Why the data layer is structured this way
 
 - **Row Level Security is enabled on every table** (`0003_rls_policies.sql`). Because TwoBlock's identity is a wallet address from MetaMask rather than Supabase Auth, wallets are not mapped to `auth.uid()`. As a result:
-  - Public tables (`profiles`, `posts`, `tips`, `follows`, `post_reactions`, `poll_votes`) can be **read directly from the browser** using the anon key (`src/lib/supabase/client.ts`) — fast, with no API route round-trip.
-  - All **writes**, plus private tables (`messages`, `notifications`, `quests`), go through API routes using the service role key (`src/lib/supabase/server.ts`), which bypasses RLS entirely.
+  - Public tables (`profiles`, `posts`, `tips`, `follows`, `post_reactions`, `poll_votes`) can be **read directly from the browser** using the anon key (`src/frontend/lib/supabase-client.ts`) — fast, with no API route round-trip.
+  - All **writes**, plus private tables (`messages`, `notifications`, `quests`), go through API routes using the service role key (`src/backend/lib/supabase-server.ts`), which bypasses RLS entirely.
   - For more granular RLS (e.g. a user reading only their own DMs directly from the browser), a custom JWT flow would be needed: the backend asks the user to sign a message via `personal_sign`, verifies the signature, then issues a Supabase token carrying a `wallet_address` claim used in a policy like `USING (wallet_address = auth.jwt() ->> 'wallet_address')`. This is not implemented yet — routing all writes through the service role is a reasonable starting point.
 
 - **`src/app/api/tips/route.ts`** uses Next.js's `after()` so that on-chain transaction verification (`waitForTransactionReceipt`) keeps running to completion even after the response has already been sent — on Vercel, a serverless function can otherwise be torn down as soon as the response is flushed if the promise isn't awaited.
@@ -240,7 +257,7 @@ Verification is purchased on-chain with USDC sent to the TwoBlock treasury walle
 | Verified Pro | 2 | 250 | ✅ | — | — |
 | Verified Max | 3 | 350 | ✅ | ✅ | ✅ |
 
-Pricing and benefits per tier live in the `verification_pricing` table (`supabase/migrations/0004_verification_pricing.sql`), read via `useVerificationPricing`, and enforced server-side on every write — the client-side `tierLimits.ts` cache exists purely for instant UI feedback.
+Pricing and benefits per tier live in the `verification_pricing` table (`supabase/migrations/0004_verification_pricing.sql`), read via `useVerificationPricing`, and enforced server-side on every write — the client-side `tier-limits.ts` cache exists purely for instant UI feedback.
 
 ---
 
@@ -252,7 +269,7 @@ Arc uses USDC as the chain's **native gas currency** (18 decimals), rather than 
 
 ## Known limitations / roadmap
 
-- Arc's official **mainnet** chain ID and RPC have not been publicly released yet; `arcMainnet` in `src/lib/arc/chain.ts` is a placeholder. Do not set `NEXT_PUBLIC_ARC_NETWORK=mainnet` until those values are confirmed on Arc's official documentation.
+- Arc's official **mainnet** chain ID and RPC have not been publicly released yet; `arcMainnet` in `src/shared/chain.ts` is a placeholder. Do not set `NEXT_PUBLIC_ARC_NETWORK=mainnet` until those values are confirmed on Arc's official documentation.
 - Granular, per-user RLS for private tables (e.g. direct messages readable straight from the browser) is not yet implemented — see the note on custom JWTs above.
 - `public/logo-twoblock.svg` is a placeholder and can be swapped for final brand assets.
 

@@ -1,5 +1,5 @@
 import { isAddress, getAddress } from "viem";
-import { ProfilePage } from "@/components/ProfilePage";
+import { ProfilePage } from "@/frontend/components/ProfilePage";
 
 export default function Profile({ params }: { params: { wallet: string } }) {
 

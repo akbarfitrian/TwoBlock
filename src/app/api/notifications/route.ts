@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 
 export async function GET(req: NextRequest) {
   const wallet = req.nextUrl.searchParams.get("wallet");

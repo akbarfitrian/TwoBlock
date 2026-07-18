@@ -1,4 +1,4 @@
-import { GetVerifiedPage } from "@/components/GetVerifiedPage";
+import { GetVerifiedPage } from "@/frontend/components/GetVerifiedPage";
 
 export default function VerifiedRoute() {
   return <GetVerifiedPage />;

@@ -1,4 +1,4 @@
-import { MessagesPage } from "@/components/MessagesPage";
+import { MessagesPage } from "@/frontend/components/MessagesPage";
 
 export default function MessagesRoute() {
   return <MessagesPage />;

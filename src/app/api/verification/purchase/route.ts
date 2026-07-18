@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { createPublicClient, http, isAddress, isHash, getAddress, parseEventLogs } from "viem";
-import { activeArcChain } from "@/lib/arc/chain";
+import { activeArcChain } from "@/shared/chain";
 import {
   twoBlockPaymentsAbi,
   getTwoBlockPaymentsAddress,
   indexToTier,
   indexToBilling,
-} from "@/lib/contracts/twoBlockPayments";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { completeQuestOnce } from "@/lib/quests";
+} from "@/shared/contracts/two-block-payments";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeQuestOnce } from "@/shared/quests";
 
 const publicClient = createPublicClient({
   chain: activeArcChain,
@@ -34,10 +34,6 @@ export async function POST(req: NextRequest) {
 
   const checksummed = getAddress(wallet);
 
-  // Verification purchases now go through TwoBlockPayments.purchaseVerification()
-  // instead of a raw P2P transfer to the treasury wallet. Verify the actual
-  // on-chain event instead of trusting the client-submitted wallet/tier/
-  // billing/amount.
   let contractAddress;
   try {
     contractAddress = getTwoBlockPaymentsAddress();

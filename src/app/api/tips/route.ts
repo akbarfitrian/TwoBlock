@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { createPublicClient, http, isAddress, isHash, parseEventLogs, getAddress } from "viem";
-import { activeArcChain } from "@/lib/arc/chain";
-import { twoBlockPaymentsAbi, getTwoBlockPaymentsAddress } from "@/lib/contracts/twoBlockPayments";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { completeQuestOnce } from "@/lib/quests";
+import { activeArcChain } from "@/shared/chain";
+import { twoBlockPaymentsAbi, getTwoBlockPaymentsAddress } from "@/shared/contracts/two-block-payments";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeQuestOnce } from "@/shared/quests";
 
 const publicClient = createPublicClient({
   chain: activeArcChain,
@@ -22,10 +22,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You can't tip yourself" }, { status: 400 });
   }
 
-  // The tip now goes through the TwoBlockPayments contract instead of a raw
-  // P2P transfer, so we don't have to trust the client's fromWallet/toWallet/
-  // amountUsdc at all — pull them straight from the on-chain `Tipped` event
-  // and reject if they don't match what was submitted.
   let contractAddress;
   try {
     contractAddress = getTwoBlockPaymentsAddress();

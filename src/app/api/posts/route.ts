@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { completeQuestOnce, refreshPostingStreak } from "@/lib/quests";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeQuestOnce, refreshPostingStreak } from "@/shared/quests";
 
 export async function POST(req: NextRequest) {
   const { authorWallet, content, repostOf, postType, pollOptions, pollDurationHours, imageUrls } = await req.json();

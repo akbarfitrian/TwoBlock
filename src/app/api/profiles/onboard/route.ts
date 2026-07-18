@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 

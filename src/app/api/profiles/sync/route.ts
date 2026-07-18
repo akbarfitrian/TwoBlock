@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 
 export async function POST(req: NextRequest) {
   const { walletAddress } = await req.json();

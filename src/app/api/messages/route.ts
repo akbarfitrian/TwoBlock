@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 
 export async function GET(req: NextRequest) {
   const wallet = req.nextUrl.searchParams.get("wallet");
@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Failed to load conversation" }, { status: 500 });
     }
 
-    // Opening a conversation marks it as read for this wallet.
     const { error: readError } = await supabase
       .from("message_reads")
       .upsert(

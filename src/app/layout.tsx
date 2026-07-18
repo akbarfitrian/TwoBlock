@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/app/providers";
-import { Sidebar } from "@/components/Sidebar";
-import { RightPanel } from "@/components/RightPanel";
+import { Sidebar } from "@/frontend/components/Sidebar";
+import { RightPanel } from "@/frontend/components/RightPanel";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
