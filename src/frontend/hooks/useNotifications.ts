@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
-import type { VerificationTier } from "@/shared/types";
-
 export type NotificationType = "follow" | "repost" | "tip" | "reaction" | "poll_result";
 
 export interface NotificationItem {
@@ -17,7 +15,7 @@ export interface NotificationItem {
     wallet_address: string;
     username: string | null;
     avatar_url: string | null;
-    verification_tier: VerificationTier;
+    is_og: boolean;
   } | null;
 }
 

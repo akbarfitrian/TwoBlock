@@ -52,8 +52,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Transaction did not emit a Tipped event" }, { status: 400 });
   }
 
-  const { from: onChainFrom, to: onChainTo, amount: onChainAmountWei } = tippedEvent.args;
+  const { from: onChainFrom, to: onChainTo, amount: onChainAmountWei, fee: onChainFeeWei } = tippedEvent.args;
   const onChainAmountUsdc = Number(onChainAmountWei) / 1e18;
+  // amount_usdc keeps meaning "gross amount the sender paid" — unaffected by
+  // the fee — so this check against the client-submitted amount is unchanged.
+  const onChainFeeUsdc = Number(onChainFeeWei) / 1e18;
+  const onChainNetUsdc = onChainAmountUsdc - onChainFeeUsdc;
 
   if (
     getAddress(onChainFrom) !== getAddress(fromWallet) ||
@@ -73,6 +77,8 @@ export async function POST(req: NextRequest) {
         to_wallet: toWallet,
         post_id: postId,
         amount_usdc: amountUsdc,
+        fee_usdc: onChainFeeUsdc,
+        net_amount_usdc: onChainNetUsdc,
         tx_ref: txRef,
         tx_status: receipt.status === "success" ? "confirmed" : "failed",
       },

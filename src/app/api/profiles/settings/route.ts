@@ -81,7 +81,7 @@ export async function PATCH(req: NextRequest) {
     .from("profiles")
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("wallet_address", checksummed)
-    .select("wallet_address, username, bio, avatar_url, verification_tier, username_changed_at")
+    .select("wallet_address, username, bio, avatar_url, is_og, username_changed_at")
     .single();
 
   if (error) {

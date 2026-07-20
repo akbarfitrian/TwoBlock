@@ -2,13 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
-import type { VerificationTier } from "@/shared/types";
-
 export interface MessageThread {
   otherWallet: string;
   otherUsername: string | null;
   otherAvatarUrl: string | null;
-  otherVerificationTier: VerificationTier;
+  otherIsOg: boolean;
   lastMessage: string;
   lastMessageAt: string;
   lastMessageFromMe: boolean;

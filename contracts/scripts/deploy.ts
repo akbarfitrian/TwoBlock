@@ -1,10 +1,10 @@
 import { ethers, network } from "hardhat";
 
 async function main() {
-  const treasury = process.env.NEXT_PUBLIC_VERIFICATION_TREASURY_WALLET;
+  const treasury = process.env.NEXT_PUBLIC_OG_TREASURY_WALLET;
   if (!treasury) {
     throw new Error(
-      "Set NEXT_PUBLIC_VERIFICATION_TREASURY_WALLET in .env.local before deploying — " +
+      "Set NEXT_PUBLIC_OG_TREASURY_WALLET in .env.local before deploying — " +
         "it's passed to the contract constructor as the initial treasury."
     );
   }

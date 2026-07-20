@@ -92,6 +92,15 @@ export function ImageIcon({ size = 20 }: IconProps) {
   )
 }
 
+export function VideoIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M16 10.5l5-2.8v8.6l-5-2.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 export function WalletIcon({ size = 20, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
@@ -331,6 +340,39 @@ export function LogoMark({ size = 22 }: IconProps) {
   )
 }
 
+export function XLogoIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+export function DiscordLogoIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.876 19.876 0 0 0 6.002-3.03.077.077 0 0 0 .032-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.955 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+export function GithubLogoIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.75 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18a10.9 10.9 0 0 1 2.87-.39c.97 0 1.95.13 2.87.39 2.19-1.49 3.15-1.18 3.15-1.18.62 1.59.23 2.76.11 3.05.73.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 export function TrashIcon({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -454,13 +496,10 @@ export function UserPlusIcon({ size = 16 }: IconProps) {
   )
 }
 
-export function VerifiedCheckIcon({ size = 14 }: IconProps) {
+export function OGCheckIcon({ size = 14 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 2.2l2.4 1.3 2.7-.5 1.2 2.5 2.5 1.2-.5 2.7L22 12l-1.3 2.4.5 2.7-2.5 1.2-1.2 2.5-2.7-.5L12 21.8l-2.4-1.3-2.7.5-1.2-2.5-2.5-1.2.5-2.7L2 12l1.3-2.4-.5-2.7 2.5-1.2 1.2-2.5 2.7.5L12 2.2z"
-        fill="currentColor"
-      />
+      <path d="M12 1.5l9 5.2v10.6l-9 5.2-9-5.2V6.7l9-5.2z" fill="currentColor" />
       <path
         d="M8.3 12.3l2.4 2.4 5-5.6"
         stroke="white"
@@ -473,45 +512,26 @@ export function VerifiedCheckIcon({ size = 14 }: IconProps) {
   )
 }
 
-export function VerifiedNavIcon({ size = 22, filled = false }: IconProps) {
+export function OGNavIcon({ size = 22, filled = false }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path
-        d="M12 2.2l2.4 1.3 2.7-.5 1.2 2.5 2.5 1.2-.5 2.7L22 12l-1.3 2.4.5 2.7-2.5 1.2-1.2 2.5-2.7-.5L12 21.8l-2.4-1.3-2.7.5-1.2-2.5-2.5-1.2.5-2.7L2 12l1.3-2.4-.5-2.7 2.5-1.2 1.2-2.5 2.7.5L12 2.2z"
+        d="M12 1.5l9 5.2v10.6l-9 5.2-9-5.2V6.7l9-5.2z"
         stroke="currentColor"
         strokeWidth={filled ? 0 : 2.1}
         strokeLinejoin="round"
         fill={filled ? 'currentColor' : 'none'}
       />
-      <path
-        d="M8.1 12.3l2.4 2.4 5.3-5.9"
-        stroke={filled ? 'rgb(var(--color-base))' : 'currentColor'}
-        strokeWidth={filled ? 2 : 1.9}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  )
-}
-
-export function DiamondBadgeIcon({ size = 14 }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <defs>
-        <linearGradient id="verifiedMaxDiamondGradient" x1="2" y1="3" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#7DD3FC" />
-          <stop offset="45%" stopColor="#38BDF8" />
-          <stop offset="100%" stopColor="#0EA5E9" />
-        </linearGradient>
-      </defs>
-      <path d="M7 3h10l4.5 5.2L12 22 2.5 8.2 7 3z" fill="url(#verifiedMaxDiamondGradient)" />
-      <path
-        d="M7 3l2.3 5.2H2.5L7 3zM17 3l-2.3 5.2h6.8L17 3zM9.3 8.2L12 22l-2.7-13.8zM14.7 8.2L12 22l2.7-13.8z"
-        fill="white"
-        fillOpacity="0.32"
-      />
-      <path d="M4.2 5.6l1.1 1.1M19 5.6l-1.1 1.1" stroke="white" strokeWidth="1" strokeLinecap="round" opacity="0.85" />
+      <text
+        x="12"
+        y="15.5"
+        textAnchor="middle"
+        fontSize="8"
+        fontWeight="700"
+        fill={filled ? 'rgb(var(--color-base))' : 'currentColor'}
+      >
+        OG
+      </text>
     </svg>
   )
 }
@@ -707,6 +727,72 @@ export function TagIcon({ size = 14 }: IconProps) {
         strokeLinejoin="round"
       />
       <circle cx="8" cy="9" r="1.4" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function CompassIcon({ size = 22, filled = false }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={2.1} fill={filled ? 'currentColor' : 'none'} fillOpacity={filled ? 0.12 : 0} />
+      <path
+        d="M15.2 8.8l-2 5.2-5.2 2 2-5.2 5.2-2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </svg>
+  )
+}
+
+export function HelpIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.9" />
+      <path
+        d="M9.3 9.3c0-1.5 1.2-2.6 2.7-2.6s2.7 1 2.7 2.3c0 1.7-2.7 1.6-2.7 3.7"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="17" r="1.1" fill="currentColor" />
+    </svg>
+  )
+}
+
+export function DocsIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M6 3.5h8.5L19 8v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M14.3 3.5V8H19" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M8.3 12.5h7.4M8.3 15.7h7.4M8.3 18.2h4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function ChevronUpIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M5 16l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+export function CommandIcon({ size = 14 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M8 4.5a2 2 0 1 0-2 2h1.5v3H6a2 2 0 1 0 2 2v-1.5h4V12a2 2 0 1 0 2-2h-1.5v-3H16a2 2 0 1 0-2-2v1.5H8.5V4.5z M8 8.5h4v3H8v-3z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }

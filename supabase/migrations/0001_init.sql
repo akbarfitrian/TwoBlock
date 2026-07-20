@@ -139,13 +139,13 @@ BEGIN
         FROM posts WHERE id = NEW.post_id;
 
     IF p_type IS DISTINCT FROM 'poll' THEN
-        RAISE EXCEPTION 'Post % bukan polling', NEW.post_id;
+        RAISE EXCEPTION 'Post % is not a poll', NEW.post_id;
     END IF;
     IF p_expires IS NOT NULL AND now() > p_expires THEN
-        RAISE EXCEPTION 'Polling sudah berakhir, vote ditutup';
+        RAISE EXCEPTION 'Poll has ended, voting is closed';
     END IF;
     IF NEW.option_index >= p_option_count THEN
-        RAISE EXCEPTION 'option_index % di luar jangkauan opsi polling', NEW.option_index;
+        RAISE EXCEPTION 'option_index % is out of range for this poll''s options', NEW.option_index;
     END IF;
     RETURN NEW;
 END;
@@ -157,7 +157,7 @@ CREATE TRIGGER trg_enforce_poll_vote_rules
 
 CREATE OR REPLACE FUNCTION forbid_poll_vote_mutation() RETURNS TRIGGER AS $$
 BEGIN
-    RAISE EXCEPTION 'Vote polling bersifat final dan tidak dapat diubah/dihapus';
+    RAISE EXCEPTION 'Poll votes are final and cannot be changed or deleted';
 END;
 $$ LANGUAGE plpgsql;
 

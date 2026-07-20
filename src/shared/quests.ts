@@ -11,8 +11,9 @@ export interface QuestDefinition {
 export const QUEST_CATALOG: QuestDefinition[] = [
   { key: "first_post", title: "First Post", description: "Create your first post on TwoBlock.", icon: "post", target: 1 },
   { key: "first_tip_sent", title: "First Tip", description: "Send your first tip to another user.", icon: "tip", target: 1 },
-  { key: "get_verified", title: "Get Verified", description: "Purchase a verification tier (Verified / Pro / Max).", icon: "verified", target: 1 },
+  { key: "get_og", title: "Get OG", description: "Purchase OG lifetime membership.", icon: "og", target: 1 },
   { key: "streak_7d", title: "7-Day Streak", description: "Post every day, 7 days in a row.", icon: "streak", target: 7 },
+  { key: "og_gate_first_post", title: "Gatekeeper", description: "OG-exclusive: publish your first gated (followers-only) post.", icon: "og", target: 1 },
 ];
 
 type ServerClient = ReturnType<typeof createSupabaseServerClient>;

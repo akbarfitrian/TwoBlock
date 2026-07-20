@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       { wallet_address: checksummed, updated_at: new Date().toISOString() },
       { onConflict: "wallet_address", ignoreDuplicates: false }
     )
-    .select("wallet_address, username, avatar_url, verification_tier")
+    .select("wallet_address, username, avatar_url, is_og")
     .single();
 
   if (error) {

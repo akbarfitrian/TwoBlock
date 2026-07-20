@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useSendTip } from "@/backend/lib/send-tip";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
+import { useProfile } from "@/frontend/hooks/useProfile";
+import { splitTipAmount } from "@/shared/contracts/two-block-payments";
 import { CoinIcon, XIcon } from "@/frontend/components/icons";
 
 interface TipButtonProps {
@@ -15,6 +17,7 @@ const QUICK_AMOUNTS = [1, 5, 10, 25];
 
 export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
   const { authenticated, walletAddress, login } = useTwoBlockAuth();
+  const { profile } = useProfile();
   const { sendTip } = useSendTip();
   const [total, setTotal] = useState(currentTotal);
   const [pending, setPending] = useState(false);
@@ -23,6 +26,13 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
   const [amountInput, setAmountInput] = useState("1.00");
 
   const isOwnPost = !!walletAddress && walletAddress.toLowerCase() === toWallet.toLowerCase();
+
+  const parsedAmount = parseFloat(amountInput);
+  const isOg = profile?.is_og ?? false;
+  const { feeBps, fee, net } =
+    !isNaN(parsedAmount) && parsedAmount > 0
+      ? splitTipAmount(parsedAmount, isOg)
+      : { feeBps: 0, fee: 0, net: 0 };
 
   const openModal = () => {
     if (!authenticated) {
@@ -59,9 +69,9 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
 
   if (isOwnPost) {
     return (
-      <span className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-medium text-ink-faint">
-        <CoinIcon size={16} />
-        <span>${total.toFixed(2)}</span>
+      <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-surface-border bg-surface-soft px-3 py-1.5 text-[13px] font-semibold text-ink-muted">
+        <CoinIcon size={15} />
+        <span>${total.toFixed(2)} tipped</span>
       </span>
     );
   }
@@ -69,12 +79,16 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
   return (
     <>
       <button
-        className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] font-medium text-ink-muted transition-colors hover:bg-gold/10 hover:text-gold disabled:opacity-50"
+        className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-semibold transition-colors disabled:opacity-50 ${
+          total > 0
+            ? "border-brand-blue/40 bg-brand-blue/5 text-brand-blue hover:bg-brand-blue/10"
+            : "border-surface-border text-ink-muted hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-brand-blue"
+        }`}
         onClick={openModal}
         disabled={pending}
       >
-        <CoinIcon size={16} />
-        <span>{pending ? "…" : `$${total.toFixed(2)}`}</span>
+        <CoinIcon size={15} />
+        <span>{pending ? "…" : total > 0 ? `$${total.toFixed(2)} tipped` : "Tip"}</span>
       </button>
 
       {modalOpen && (
@@ -134,6 +148,13 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
                 </button>
               ))}
             </div>
+
+            {parsedAmount > 0 && !isNaN(parsedAmount) && (
+              <p className="mt-2.5 text-[12px] text-ink-faint">
+                Platform fee {feeBps / 100}% ({isOg ? "OG" : "Free"}) — recipient gets ${net.toFixed(2)}{" "}
+                (${fee.toFixed(2)} fee)
+              </p>
+            )}
 
             {error && <p className="mt-3 text-[13px] text-danger">{error}</p>}
 

@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/app/providers";
 import { Sidebar } from "@/frontend/components/Sidebar";
 import { RightPanel } from "@/frontend/components/RightPanel";
+import { TopBar } from "@/frontend/components/TopBar";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -42,10 +43,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body>
         <Providers>
-          <div className="mx-auto grid min-h-screen max-w-[1280px] grid-cols-1 items-start md:grid-cols-[200px_minmax(0,1fr)] lg:grid-cols-[275px_minmax(0,600px)_350px]">
+          <div className="mx-auto flex min-h-screen w-full max-w-[1600px] items-start justify-center md:grid md:grid-cols-[76px_minmax(0,630px)] lg:grid-cols-[248px_990px]">
             <Sidebar />
-            <main className="min-h-screen w-full border-x border-surface-border">{children}</main>
-            <RightPanel />
+            <div className="flex min-h-screen w-full flex-col">
+              <TopBar />
+              <div className="grid flex-1 grid-cols-1 items-start lg:grid-cols-[minmax(0,630px)_360px]">
+                <main className="min-h-screen w-full border-r border-surface-border">{children}</main>
+                <RightPanel />
+              </div>
+            </div>
           </div>
         </Providers>
       </body>

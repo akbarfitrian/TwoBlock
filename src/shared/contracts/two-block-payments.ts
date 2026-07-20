@@ -1,6 +1,4 @@
 import { getAddress, isAddress, type Address } from "viem";
-import type { VerificationTier } from "@/shared/types";
-import type { Billing } from "@/frontend/hooks/useVerification";
 
 export const twoBlockPaymentsAbi = [
   {
@@ -20,13 +18,24 @@ export const twoBlockPaymentsAbi = [
   },
   {
     type: "function",
-    name: "purchaseVerification",
-    inputs: [
-      { name: "tier", type: "uint8" },
-      { name: "billing", type: "uint8" },
-    ],
+    name: "purchaseOG",
+    inputs: [],
     outputs: [],
     stateMutability: "payable",
+  },
+  {
+    type: "function",
+    name: "OG_PRICE",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isOG",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
   },
   {
     type: "function",
@@ -56,17 +65,16 @@ export const twoBlockPaymentsAbi = [
       { name: "from", type: "address", indexed: true },
       { name: "to", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
+      { name: "fee", type: "uint256", indexed: false },
       { name: "postId", type: "string", indexed: false },
     ],
     anonymous: false,
   },
   {
     type: "event",
-    name: "VerificationPurchased",
+    name: "OGPurchased",
     inputs: [
       { name: "wallet", type: "address", indexed: true },
-      { name: "tier", type: "uint8", indexed: false },
-      { name: "billing", type: "uint8", indexed: false },
       { name: "amount", type: "uint256", indexed: false },
     ],
     anonymous: false,
@@ -91,6 +99,35 @@ export const twoBlockPaymentsAbi = [
   },
 ] as const;
 
+/// Fixed lifetime price of OG membership, in USDC — mirrors the contract's
+/// OG_PRICE constant. Kept here too so the frontend can show/validate the
+/// price without an extra RPC call.
+export const OG_PRICE_USDC = 28;
+
+/// Tip platform-fee rates, in basis points (100 bps = 1%) — mirror the
+/// contract's FREE_TIP_FEE_BPS / OG_TIP_FEE_BPS constants exactly. Kept here
+/// too so the frontend can show the fee before the sender signs, without an
+/// extra RPC call. If you ever change the fee, change it in
+/// TwoBlockPayments.sol, redeploy, and update these to match.
+export const FREE_TIP_FEE_BPS = 500; // 5%
+export const OG_TIP_FEE_BPS = 200; // 2%
+const BPS_DENOMINATOR = 10_000;
+
+/// Basis points for a tip sent by a wallet with the given OG status.
+export function getTipFeeBps(isOg: boolean): number {
+  return isOg ? OG_TIP_FEE_BPS : FREE_TIP_FEE_BPS;
+}
+
+/// Splits a gross tip amount (what the sender pays) into { fee, net }
+/// USDC amounts using the same integer basis-point math as the contract.
+/// `amountUsdc` should be the human-readable USDC amount (e.g. 1.5).
+export function splitTipAmount(amountUsdc: number, isOg: boolean) {
+  const feeBps = getTipFeeBps(isOg);
+  const fee = Math.round(amountUsdc * feeBps) / BPS_DENOMINATOR;
+  const net = amountUsdc - fee;
+  return { feeBps, fee, net };
+}
+
 export function getTwoBlockPaymentsAddress(): Address {
   const address = process.env.NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS;
   if (!address || !isAddress(address)) {
@@ -100,39 +137,4 @@ export function getTwoBlockPaymentsAddress(): Address {
     );
   }
   return getAddress(address);
-}
-
-const TIER_TO_INDEX: Record<Exclude<VerificationTier, "free">, number> = {
-  verified: 0,
-  verified_pro: 1,
-  verified_max: 2,
-};
-
-const INDEX_TO_TIER: Exclude<VerificationTier, "free">[] = ["verified", "verified_pro", "verified_max"];
-
-const BILLING_TO_INDEX: Record<Billing, number> = {
-  monthly: 0,
-  yearly: 1,
-};
-
-const INDEX_TO_BILLING: Billing[] = ["monthly", "yearly"];
-
-export function tierToIndex(tier: Exclude<VerificationTier, "free">): number {
-  return TIER_TO_INDEX[tier];
-}
-
-export function indexToTier(index: number): Exclude<VerificationTier, "free"> {
-  const tier = INDEX_TO_TIER[index];
-  if (!tier) throw new Error(`Unknown on-chain tier index: ${index}`);
-  return tier;
-}
-
-export function billingToIndex(billing: Billing): number {
-  return BILLING_TO_INDEX[billing];
-}
-
-export function indexToBilling(index: number): Billing {
-  const billing = INDEX_TO_BILLING[index];
-  if (!billing) throw new Error(`Unknown on-chain billing index: ${index}`);
-  return billing;
 }

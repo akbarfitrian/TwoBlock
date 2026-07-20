@@ -4,9 +4,11 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useProfile } from "@/frontend/hooks/useProfile";
 import { getTierLimits } from "@/shared/tier-limits";
-import { uploadPostImage, UploadError } from "@/frontend/lib/upload";
-import { ImageIcon, PollIcon, XIcon } from "@/frontend/components/icons";
+import { uploadPostImage, uploadPostVideo, UploadError } from "@/frontend/lib/upload";
+import { ImageIcon, PollIcon, VideoIcon, XIcon } from "@/frontend/components/icons";
 import { avatarColor, initials } from "@/frontend/lib/format";
+import { GifPicker } from "@/frontend/components/GifPicker";
+import { EmojiPicker } from "@/frontend/components/EmojiPicker";
 
 const MAX_IMAGES = 4;
 
@@ -18,7 +20,7 @@ const DURATION_OPTIONS = [
 ];
 
 interface PostComposerProps {
-  onPost: (content: string, imageUrls?: string[]) => Promise<void>;
+  onPost: (content: string, imageUrls?: string[], isGated?: boolean, videoUrl?: string) => Promise<void>;
   onCreatePoll: (question: string, options: string[], durationHours: number | null) => Promise<void>;
 }
 
@@ -31,17 +33,27 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [images, setImages] = useState<string[]>([]);
+  const [video, setVideo] = useState<string | null>(null);
+  const [gated, setGated] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const tier = profile?.verification_tier ?? "free";
-  const limits = getTierLimits(tier);
+  const isOg = profile?.is_og ?? false;
+  const limits = getTierLimits(isOg);
   const quotaExhausted = remainingQuota !== null && remainingQuota <= 0;
   const overLimit = content.length > limits.maxPostChars;
   const filledOptions = options.map((o) => o.trim()).filter((o) => o.length > 0);
   const pollValid = content.trim().length > 0 && !overLimit && filledOptions.length >= 2;
+  // Images/GIFs and video are mutually exclusive attachments (a post has
+  // one or the other, never both — mirrors the media_is_exclusive DB
+  // constraint in 0014_post_video.sql).
+  const canAttachMoreImages = !showPoll && limits.canAttachImage && !video;
+  const canAttachVideo = !showPoll && limits.canAttachVideo && images.length === 0;
   const canSubmit =
     authenticated &&
     !submitting &&
@@ -68,6 +80,9 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
                 <ImageIcon size={19} />
               </span>
               <span className="flex h-9 w-9 items-center justify-center rounded-full text-ink-faint/50">
+                <VideoIcon size={19} />
+              </span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full text-ink-faint/50">
                 <PollIcon size={19} />
               </span>
             </div>
@@ -90,6 +105,8 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
     setOptions(["", ""]);
     setDurationHours(null);
     setImages([]);
+    setVideo(null);
+    setGated(false);
     setShowPoll(false);
   };
 
@@ -98,6 +115,7 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
       setShowPoll(false);
     } else {
       setImages([]);
+      setVideo(null);
       setShowPoll(true);
     }
   };
@@ -115,11 +133,58 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
     try {
       const url = await uploadPostImage(walletAddress, file);
       setImages((prev) => [...prev, url]);
+      setVideo(null);
     } catch (err) {
       setError(err instanceof UploadError ? err.message : "Failed to upload image.");
     } finally {
       setUploadingImage(false);
     }
+  };
+
+  const handleGifSelect = (gifUrl: string) => {
+    if (images.length >= MAX_IMAGES) {
+      setError(`Maximum ${MAX_IMAGES} images per post.`);
+      return;
+    }
+    setError(null);
+    setImages((prev) => [...prev, gifUrl]);
+    setVideo(null);
+  };
+
+  const handleVideoPick = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !walletAddress) return;
+    setUploadingVideo(true);
+    setError(null);
+    try {
+      const url = await uploadPostVideo(walletAddress, file);
+      setVideo(url);
+      setImages([]);
+    } catch (err) {
+      setError(err instanceof UploadError ? err.message : "Failed to upload video.");
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setContent((prev) => prev + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? content.length;
+    const end = el.selectionEnd ?? content.length;
+    const next = content.slice(0, start) + emoji + content.slice(end);
+    setContent(next);
+    // Restore focus + move the caret to just after the inserted emoji —
+    // otherwise it jumps to the end of the textarea on every insert.
+    requestAnimationFrame(() => {
+      el.focus();
+      const caret = start + emoji.length;
+      el.setSelectionRange(caret, caret);
+    });
   };
 
   const handleSubmit = async () => {
@@ -129,7 +194,7 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
       if (showPoll) {
         await onCreatePoll(content.trim(), filledOptions, durationHours);
       } else {
-        await onPost(content.trim(), images);
+        await onPost(content.trim(), images, limits.canGatePost ? gated : undefined, video ?? undefined);
       }
       resetForm();
       await refresh();
@@ -159,10 +224,17 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
 
       <div className="min-w-0 flex-1">
         <textarea
+          ref={textareaRef}
+          data-composer-textarea
           className="w-full resize-none bg-transparent text-[17px] leading-snug text-ink placeholder:text-ink-faint outline-none"
           placeholder={showPoll ? "Ask a poll question…" : "What's on your mind?"}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            const lines = value.split("\n");
+            const MAX_CONTENT_LINES = 30;
+            setContent(lines.length > MAX_CONTENT_LINES ? lines.slice(0, MAX_CONTENT_LINES).join("\n") : value);
+          }}
           rows={showPoll ? 2 : 3}
           maxLength={limits.maxPostChars + 20}
         />
@@ -233,8 +305,8 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
             }`}
           >
             {images.map((url, i) => (
-              <div key={url} className={`group relative ${images.length === 1 ? "max-h-80" : "aspect-square"} overflow-hidden`}>
-                <img src={url} alt="" className="h-full w-full object-cover" />
+              <div key={url} className={`group relative bg-surface-soft ${images.length === 1 ? "max-h-80" : "aspect-square"} overflow-hidden`}>
+                <img src={url} alt="" className={`h-full w-full ${images.length === 1 ? "object-contain" : "object-cover"}`} />
                 <button
                   type="button"
                   className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition-opacity hover:opacity-100"
@@ -259,6 +331,19 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
           </div>
         )}
 
+        {!showPoll && limits.canAttachVideo && video && (
+          <div className="group relative mt-1 mb-3 overflow-hidden rounded-2xl">
+            <video src={video} controls className="max-h-80 w-full bg-black" />
+            <button
+              type="button"
+              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white opacity-90 transition-opacity hover:opacity-100"
+              onClick={() => setVideo(null)}
+            >
+              <XIcon size={13} />
+            </button>
+          </div>
+        )}
+
         <input
           ref={fileInputRef}
           type="file"
@@ -266,10 +351,17 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
           style={{ display: "none" }}
           onChange={handleImagePick}
         />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          style={{ display: "none" }}
+          onChange={handleVideoPick}
+        />
 
         <div className="flex items-center justify-between border-t border-surface-border pt-2.5">
           <div className="-ml-2 flex items-center gap-0.5">
-            {!showPoll && limits.canAttachImage && images.length === 0 && (
+            {canAttachMoreImages && images.length === 0 && (
               <button
                 type="button"
                 className="flex h-9 w-9 items-center justify-center rounded-full text-brand-blue transition-colors hover:bg-brand-blue/10 disabled:opacity-40"
@@ -280,7 +372,21 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
                 {uploadingImage ? <span className="text-[12px]">…</span> : <ImageIcon size={19} />}
               </button>
             )}
-            {limits.canCreatePoll && images.length === 0 && (
+            {canAttachMoreImages && images.length === 0 && (
+              <GifPicker onSelect={handleGifSelect} disabled={uploadingImage} />
+            )}
+            {canAttachVideo && !video && (
+              <button
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-brand-blue transition-colors hover:bg-brand-blue/10 disabled:opacity-40"
+                onClick={() => videoInputRef.current?.click()}
+                disabled={uploadingVideo}
+                title="Add video (max 10MB)"
+              >
+                {uploadingVideo ? <span className="text-[12px]">…</span> : <VideoIcon size={19} />}
+              </button>
+            )}
+            {limits.canCreatePoll && images.length === 0 && !video && (
               <button
                 type="button"
                 className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
@@ -290,6 +396,19 @@ export function PostComposer({ onPost, onCreatePoll }: PostComposerProps) {
                 title={showPoll ? "Remove poll" : "Add poll"}
               >
                 <PollIcon size={19} />
+              </button>
+            )}
+            <EmojiPicker onSelect={handleEmojiSelect} />
+            {limits.canGatePost && !showPoll && (
+              <button
+                type="button"
+                className={`ml-1 flex h-9 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition-colors ${
+                  gated ? "bg-brand-blue/10 text-brand-blue" : "text-ink-faint hover:bg-surface-hover hover:text-ink-muted"
+                }`}
+                onClick={() => setGated((g) => !g)}
+                title="Only your followers will be able to see this post"
+              >
+                {gated ? "Followers only" : "Gate to followers"}
               </button>
             )}
           </div>

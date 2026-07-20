@@ -3,12 +3,12 @@
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useQuests } from "@/frontend/hooks/useQuests";
 import { BackButton } from "@/frontend/components/BackButton";
-import { FeatherIcon, CoinIcon, VerifiedCheckIcon, FlameIcon, CheckIcon } from "@/frontend/components/icons";
+import { FeatherIcon, CoinIcon, OGCheckIcon, FlameIcon, CheckIcon } from "@/frontend/components/icons";
 
 const QUEST_ICONS: Record<string, React.ReactNode> = {
   post: <FeatherIcon size={22} />,
   tip: <CoinIcon size={20} />,
-  verified: <VerifiedCheckIcon size={18} />,
+  og: <OGCheckIcon size={18} />,
   streak: <FlameIcon size={20} />,
 };
 

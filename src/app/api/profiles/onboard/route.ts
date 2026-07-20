@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       { wallet_address: checksummed, username, username_changed_at: new Date().toISOString(), updated_at: new Date().toISOString() },
       { onConflict: "wallet_address" }
     )
-    .select("wallet_address, username, avatar_url, verification_tier")
+    .select("wallet_address, username, avatar_url, is_og")
     .single();
 
   if (error) {

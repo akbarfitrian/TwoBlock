@@ -1,8 +1,8 @@
 # TwoBlock
 
-**TwoBlock** is a decentralized, wallet-native social media platform built on the **Arc** blockchain. Instead of usernames and passwords, identity on TwoBlock *is* your crypto wallet — every post, tip, follow, and reaction is tied directly to an on-chain address. It combines the familiar feel of a modern social feed with Web3-native primitives: smart-contract-routed USDC tipping, on-chain-verified transactions, tiered wallet verification, and gamified quests — all without requiring a centralized login system.
+**TwoBlock** is a decentralized, wallet-native social media platform built on the **Arc** blockchain. Instead of usernames and passwords, identity on TwoBlock *is* your crypto wallet — every post, tip, follow, and reaction is tied directly to an on-chain address. It combines the familiar feel of a modern social feed with Web3-native primitives: smart-contract-routed USDC tipping, on-chain-verified transactions, a lifetime OG membership, and gamified quests — all without requiring a centralized login system.
 
-> **Payments go through a contract, not P2P.** Tips and verification-tier purchases are both routed through a single on-chain contract, [`contracts/TwoBlockPayments.sol`](contracts/TwoBlockPayments.sol) — not raw wallet-to-wallet transfers. The contract emits `Tipped`/`VerificationPurchased` events that the backend verifies against instead of trusting client-submitted amounts/addresses. See [Smart contract](#smart-contract-twoblockpaymentssol) below.
+> **Payments go through a contract, not P2P.** Tips and the OG membership purchase are both routed through a single on-chain contract, [`contracts/TwoBlockPayments.sol`](contracts/TwoBlockPayments.sol) — not raw wallet-to-wallet transfers. The contract emits `Tipped`/`OGPurchased` events that the backend verifies against instead of trusting client-submitted amounts/addresses. See [Smart contract](#smart-contract-twoblockpaymentssol) below.
 
 > Built with Next.js 14 (App Router), TypeScript, Supabase (Postgres + Row Level Security), and viem, deployed on Vercel.
 
@@ -15,7 +15,7 @@
 | Email/password or OAuth login | **Wallet-based auth** — connect MetaMask (or any EIP-1193 wallet), no accounts or secrets to manage |
 | Likes | On-chain-adjacent **Agree / Disagree** reactions tied to your wallet |
 | "Buy me a coffee" via third-party payment processors | **Native USDC tipping** sent directly wallet-to-wallet on the Arc chain, with transaction hashes recorded and verified on-chain |
-| Paid blue-check subscriptions via credit card | **Verification tiers purchased with on-chain USDC payments** to a treasury wallet, unlocking higher post quotas, image uploads, and polls |
+| Paid blue-check subscriptions via credit card | **OG lifetime membership** — a single $28 on-chain USDC payment to a treasury wallet, unlocking higher post quotas, image uploads, polls, post editing, and gated posts, forever |
 | Centralized identity | No email required — your **wallet address is your identity**, with an optional on-chain-linked username |
 
 Arc is used here specifically because it treats **USDC as its native gas currency**, which means tipping is a plain native transfer — no ERC-20 contracts, no `approve()` calls, no gas token swaps. This keeps the tipping UX as close to a single tap as Web3 currently allows.
@@ -26,14 +26,14 @@ Arc is used here specifically because it treats **USDC as its native gas currenc
 
 - **Wallet-native authentication** — connects to `window.ethereum` directly (MetaMask or any injected wallet), with automatic network switching/adding for the Arc chain. No embedded wallet, no third-party auth provider, no App ID.
 - **Feed & posts** — text posts, image attachments, and reposts, with per-tier daily quotas and character limits.
-- **On-chain polls** — Verified Max users can attach polls to posts; votes are open to every tier.
+- **On-chain polls** — OG members can attach polls to posts; votes are open to everyone.
 - **USDC tipping** — send USDC to another wallet from a post via the `TwoBlockPayments` contract's `tip()` function; the backend verifies the tx by decoding the contract's `Tipped` event before marking it confirmed.
-- **Verification tiers** — `Verified`, `Verified Pro`, and `Verified Max`, purchased by calling `purchaseVerification()` on the same contract, which forwards USDC to the treasury wallet. Higher tiers unlock larger post quotas, longer posts, image attachments, post editing, and poll creation.
+- **OG membership** — a single lifetime $28 purchase via `purchaseOG()` on the same contract, which forwards USDC to the treasury wallet. OG unlocks a larger post quota, longer posts, image attachments, post editing (5-minute window), poll creation, gated (followers-only) posts, and member analytics.
 - **Follows & profiles** — follow/unfollow, public profile pages per wallet, editable bio/avatar/username with a cooldown on username changes.
 - **Reactions** — Agree/Disagree reactions on posts, feeding into notifications and quest progress.
 - **Direct messages** — wallet-to-wallet messaging.
 - **Notifications** — follows, reposts, tips, reactions, and poll results.
-- **Quests** — lightweight gamification (first post, first tip sent, get verified, 7-day posting streak) to drive onboarding and engagement.
+- **Quests** — lightweight gamification (first post, first tip sent, get OG, 7-day posting streak, plus an OG-exclusive "Gatekeeper" quest) to drive onboarding and engagement.
 - **Leaderboard** — top-tipped posts panel, surfacing the most-rewarded content.
 
 ---
@@ -53,7 +53,7 @@ Arc is used here specifically because it treats **USDC as its native gas currenc
 
 ## Smart contract (`TwoBlockPayments.sol`)
 
-Both payment flows — tips and verification purchases — go through a single deployed contract instead of a raw P2P native transfer:
+Both payment flows — tips and the OG membership purchase — go through a single deployed contract instead of a raw P2P native transfer:
 
 ```
 contracts/
@@ -63,22 +63,22 @@ hardhat.config.ts          # compiles contracts/, targets Arc testnet/mainnet
 ```
 
 **Why route through a contract instead of P2P:**
-- The contract emits `Tipped(from, to, amount, postId)` and `VerificationPurchased(wallet, tier, billing, amount)` events. The backend (`api/tips`, `api/verification/purchase`) decodes these directly from the transaction receipt and rejects the request if they don't match what the client submitted, instead of trusting client-supplied `to`/`amount` values against a raw transfer's `to`/`value`.
-- Verification funds always land wherever the contract's `treasury` currently points, which the contract owner can update with `setTreasury()` — no need to change the frontend or redeploy to rotate treasury wallets.
+- The contract emits `Tipped(from, to, amount, postId)` and `OGPurchased(wallet, amount)` events. The backend (`api/tips`, `api/og/purchase`) decodes these directly from the transaction receipt and rejects the request if they don't match what the client submitted, instead of trusting client-supplied `to`/`amount` values against a raw transfer's `to`/`value`. The receipt's block number also becomes `og_member_since_block`, so it can't be backdated.
+- OG funds always land wherever the contract's `treasury` currently points, which the contract owner can update with `setTreasury()` — no need to change the frontend or redeploy to rotate treasury wallets.
 - If a recipient can't accept a push transfer (e.g. a contract wallet with no payable fallback), funds are held in `pendingWithdrawals` instead of reverting the sender's transaction or getting stuck; the recipient calls `withdraw()` to pull them out.
 
 **Functions:**
 | Function | Called from | Effect |
 |---|---|---|
 | `tip(address to, string postId)` (payable) | `src/backend/lib/send-tip.ts` | Forwards `msg.value` to `to`, emits `Tipped` |
-| `purchaseVerification(uint8 tier, uint8 billing)` (payable) | `src/frontend/hooks/useVerification.ts` | Forwards `msg.value` to `treasury`, emits `VerificationPurchased` |
+| `purchaseOG()` (payable, fixed `OG_PRICE` = 28 USDC) | `src/frontend/hooks/useOG.ts` | Forwards `msg.value` to `treasury`, sets `isOG[msg.sender] = true`, emits `OGPurchased` |
 | `withdraw()` | anyone with a pending balance | Pulls out escrowed funds from a failed forward |
-| `setTreasury(address)` | contract owner only | Updates where verification payments are forwarded |
+| `setTreasury(address)` | contract owner only | Updates where OG payments are forwarded |
 
 **Deploying:**
 ```bash
 npm install
-# set DEPLOYER_PRIVATE_KEY and NEXT_PUBLIC_VERIFICATION_TREASURY_WALLET in .env.local
+# set DEPLOYER_PRIVATE_KEY and NEXT_PUBLIC_OG_TREASURY_WALLET in .env.local
 npm run contracts:deploy:testnet
 # copy the printed address into NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS in .env.local
 ```
@@ -100,21 +100,23 @@ twoblock/
 │   │   │   ├── profiles/settings/route.ts       # Update bio/avatar/username
 │   │   │   ├── profiles/sync/route.ts           # Sync/refresh profile state
 │   │   │   ├── tips/route.ts                    # Records a tip and verifies the on-chain transaction
-│   │   │   ├── posts/route.ts                   # Create text/poll posts and reposts (quota + limits by tier)
-│   │   │   ├── posts/[id]/vote/route.ts         # Vote on a poll (final; open to every tier)
+│   │   │   ├── posts/route.ts                   # Create text/poll posts and reposts (quota + limits, gated posts)
+│   │   │   ├── posts/[id]/route.ts              # Edit a post (OG only, 5-minute window)
+│   │   │   ├── posts/[id]/vote/route.ts         # Vote on a poll (final; open to everyone)
 │   │   │   ├── follows/route.ts                 # Follow (POST) / unfollow (DELETE)
 │   │   │   ├── reactions/route.ts               # Set (POST) / remove (DELETE) Agree/Disagree reactions
 │   │   │   ├── messages/route.ts                # Direct messages
 │   │   │   ├── notifications/route.ts           # Notifications feed
 │   │   │   ├── quests/route.ts                  # Quest progress
-│   │   │   └── verification/purchase/route.ts   # Records a verification tier purchase/renewal
+│   │   │   ├── analytics/route.ts               # OG-only: tip totals & follower growth
+│   │   │   └── og/purchase/route.ts             # Records the OG lifetime-membership purchase
 │   │   ├── profile/[wallet]/page.tsx            # Frontend: public profile page for any wallet
 │   │   ├── messages/                            # Direct message inbox and threads
 │   │   ├── notifications/page.tsx
 │   │   ├── quests/page.tsx
 │   │   ├── search/page.tsx
 │   │   ├── settings/page.tsx
-│   │   ├── verified/page.tsx                    # "Get Verified" purchase flow
+│   │   ├── og/page.tsx                          # "Get OG" purchase flow
 │   │   ├── layout.tsx                           # Root layout — three-column shell (Sidebar / main / RightPanel)
 │   │   ├── page.tsx                             # Home feed
 │   │   └── providers.tsx                        # Global provider mount point
@@ -132,21 +134,21 @@ twoblock/
 │   │   └── lib/
 │   │       ├── supabase-server.ts                # Server Supabase client (service role key — bypasses RLS)
 │   │       ├── send-tip.ts                       # Calls TwoBlockPayments.tip() via viem WalletClient
-│   │       └── verification-treasury.ts          # (deprecated) treasury wallet resolution — see contract's treasury()
+│   │       └── og-treasury.ts                    # (deprecated) treasury wallet resolution — see contract's treasury()
 │   │
 │   ├── shared/                                # Used by both frontend and backend
 │   │   ├── types.ts                              # Domain types (Profile, Post, PostWithAuthor, ...)
-│   │   ├── tier-limits.ts                        # Per-tier quotas/limits (client cache + server-enforced source)
+│   │   ├── tier-limits.ts                        # Free/OG quotas & limits (client cache + server-enforced source)
 │   │   ├── quests.ts                             # Quest catalog + progress helpers
 │   │   ├── chain.ts                              # Arc chain definitions (testnet + mainnet placeholder)
 │   │   └── contracts/
-│   │       └── two-block-payments.ts             # Contract ABI, address getter, tier/billing enum mapping
+│   │       └── two-block-payments.ts             # Contract ABI, address getter, OG price constant
 │   │
 │   └── types/
 │       └── ethereum.d.ts                      # Ambient `window.ethereum` (EIP-1193) type declarations
 │
 ├── contracts/                                 # TwoBlockPayments.sol + hardhat deploy script
-├── supabase/migrations/                       # Ordered SQL migrations (0001 → 0009)
+├── supabase/migrations/                       # Ordered SQL migrations (0001 → 0010)
 ├── public/                                    # Static assets (logo, icons)
 ├── .env.example
 ├── hardhat.config.ts                          # Compiles/deploys contracts/ to Arc
@@ -189,7 +191,7 @@ cp .env.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key — **server-only, never expose to the client.** |
-| `NEXT_PUBLIC_VERIFICATION_TREASURY_WALLET` | Arc wallet address that receives verification tier payments. |
+| `NEXT_PUBLIC_OG_TREASURY_WALLET` | Arc wallet address that receives OG membership payments. |
 
 ### 3. Run locally
 
@@ -212,7 +214,7 @@ Open [http://localhost:3000](http://localhost:3000) — you'll see a **Connect W
    supabase db push
    ```
 
-   **Manual, via the SQL Editor:** run each file in `supabase/migrations/` in order, `0001` through `0008`, one at a time. **Do not skip `0005_storage_buckets.sql`** — it creates the `avatars` and `post-images` Storage buckets; without it, avatar/image uploads fail with a "Bucket not found" error.
+   **Manual, via the SQL Editor:** run each file in `supabase/migrations/` in order, `0001` through `0010`, one at a time. **Do not skip `0005_storage_buckets.sql`** — it creates the `avatars` and `post-images` Storage buckets; without it, avatar/image uploads fail with a "Bucket not found" error.
 
 3. Grab your credentials from **Project Settings → API**:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
@@ -246,18 +248,27 @@ There's no dashboard to configure for the wallet side — `useTwoBlockAuth` talk
 
 ---
 
-## Verification tiers
+## OG membership
 
-Verification is purchased on-chain with USDC sent to the TwoBlock treasury wallet, and unlocks higher posting limits:
+OG is a single lifetime membership — $28 in USDC, paid once, no renewal, no expiry — purchased on-chain via `purchaseOG()` and sent to the TwoBlock treasury wallet:
 
-| Tier | Daily posts | Max characters | Image uploads | Edit posts | Create polls |
-|---|---|---|---|---|---|
-| Free | 1 | 60 | — | — | — |
-| Verified | 2 | 150 | — | — | — |
-| Verified Pro | 2 | 250 | ✅ | — | — |
-| Verified Max | 3 | 350 | ✅ | ✅ | ✅ |
+| Tier | Daily posts | Max characters | Image uploads | Edit posts | Create polls | Gate posts |
+|---|---|---|---|---|---|---|
+| Free | 5 | 250 | ✅ | — | ✅ | — |
+| OG | 20 | 10,000 | ✅ | ✅ (5 min) | ✅ | ✅ |
 
-Pricing and benefits per tier live in the `verification_pricing` table (`supabase/migrations/0004_verification_pricing.sql`), read via `useVerificationPricing`, and enforced server-side on every write — the client-side `tier-limits.ts` cache exists purely for instant UI feedback.
+Pricing and benefits live in the `og_pricing` table (`supabase/migrations/0010_og_membership.sql`), enforced server-side on every write — the client-side `tier-limits.ts` cache exists purely for instant UI feedback. A wallet's membership timestamp is recorded as `og_member_since_block` — the block number of the confirmed `purchaseOG()` transaction, so it can't be backdated.
+
+### Tip platform fee
+
+Every tip sent through `tip()` now has a platform fee taken off the top and forwarded to `treasury`, alongside the OG membership payment:
+
+| Sender tier | Fee |
+|---|---|
+| Free | 5% |
+| OG | 2% |
+
+The fee is computed on-chain (`FREE_TIP_FEE_BPS` / `OG_TIP_FEE_BPS` in `TwoBlockPayments.sol`) based on the sender's `isOG` status at send time, not the recipient's. The `Tipped` event now emits `fee` alongside `amount`, so `api/tips` can decode and store both — `amount_usdc` stays the gross amount the sender paid, `fee_usdc`/`net_amount_usdc` are the split (see `supabase/migrations/0011_tip_fees.sql`). The frontend tip modal (`TipButton.tsx`) shows the fee and net amount before the sender signs, using `splitTipAmount()` from `shared/contracts/two-block-payments.ts`.
 
 ---
 

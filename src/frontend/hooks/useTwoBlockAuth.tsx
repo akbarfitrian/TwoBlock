@@ -261,7 +261,7 @@ export function TwoBlockAuthProvider({ children }: { children: ReactNode }) {
 export function useTwoBlockAuth(): TwoBlockAuthState {
   const ctx = useContext(TwoBlockAuthContext);
   if (!ctx) {
-    throw new Error("useTwoBlockAuth harus dipanggil di dalam <TwoBlockAuthProvider>");
+    throw new Error("useTwoBlockAuth must be called within a <TwoBlockAuthProvider>");
   }
   return ctx;
 }

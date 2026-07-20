@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await supabase
     .from("notifications")
     .select(
-      "id, type, is_read, created_at, post_id, tip_id, actor:actor_wallet(wallet_address, username, avatar_url, verification_tier)"
+      "id, type, is_read, created_at, post_id, tip_id, actor:actor_wallet(wallet_address, username, avatar_url, is_og)"
     )
     .eq("recipient_wallet", me)
     .order("created_at", { ascending: false })

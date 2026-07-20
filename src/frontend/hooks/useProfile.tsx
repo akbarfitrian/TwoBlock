@@ -73,7 +73,7 @@ function useProfileState(): UseProfileState {
   }, [load]);
 
   const remainingQuota =
-    profile != null ? Math.max(0, getTierLimits(profile.verification_tier).dailyPostLimit - postsToday) : null;
+    profile != null ? Math.max(0, getTierLimits(profile.is_og).dailyPostLimit - postsToday) : null;
 
   return { profile, loading, postsToday, remainingQuota, refresh: load };
 }
@@ -89,7 +89,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 export function useProfile(): UseProfileState {
   const ctx = useContext(ProfileContext);
   if (!ctx) {
-    throw new Error("useProfile harus dipanggil di dalam <ProfileProvider>");
+    throw new Error("useProfile must be called within a <ProfileProvider>");
   }
   return ctx;
 }

@@ -11,9 +11,28 @@ function fillZeros(counts: number[], length: number): number[] {
   return Array.from({ length }, (_, i) => counts[i] ?? 0);
 }
 
+async function fetchFollowingSet(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  walletAddress: string
+): Promise<Set<string>> {
+  const { data } = await supabase.from("follows").select("following_wallet").eq("follower_wallet", walletAddress);
+  return new Set((data ?? []).map((r) => r.following_wallet as string));
+}
+
+function canSeeGatedPost(post: Post, walletAddress: string | null, followingSet: Set<string>): boolean {
+  if (!post.is_gated) return true;
+  if (!walletAddress) return false;
+  if (post.author_wallet === walletAddress) return true;
+  return followingSet.has(post.author_wallet);
+}
+
 export interface UsePostsOptions {
 
   authorWallet?: string;
+
+  // When set, fetches (and re-polls) just this one post instead of a feed
+  // page — used by the post detail/permalink page.
+  postId?: string;
 }
 
 export interface UsePostsState {
@@ -25,7 +44,7 @@ export interface UsePostsState {
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
 
-  createPost: (content: string, imageUrls?: string[]) => Promise<void>;
+  createPost: (content: string, imageUrls?: string[], isGated?: boolean, videoUrl?: string) => Promise<void>;
 
   createPoll: (question: string, options: string[], durationHours: number | null) => Promise<void>;
 
@@ -34,10 +53,12 @@ export interface UsePostsState {
   repost: (postId: string) => Promise<void>;
 
   toggleReaction: (postId: string, reaction: "agree" | "disagree") => Promise<void>;
+
+  deletePost: (postId: string) => Promise<void>;
 }
 
 export function usePosts(options: UsePostsOptions = {}): UsePostsState {
-  const { authorWallet } = options;
+  const { authorWallet, postId: singlePostId } = options;
   const { walletAddress } = useTwoBlockAuth();
 
   const [posts, setPosts] = useState<PostWithAuthor[]>([]);
@@ -53,18 +74,27 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
       let query = supabase
         .from("posts")
         .select(
-          "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, verification_tier)"
+          "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og)"
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(PAGE_SIZE);
 
+      if (singlePostId) query = query.eq("id", singlePostId);
       if (authorWallet) query = query.eq("author_wallet", authorWallet);
       if (before) query = query.lt("created_at", before);
 
-      const { data: rows, error: queryError } = await query;
+      const [{ data: rows, error: queryError }, followingSet] = await Promise.all([
+        query,
+        walletAddress ? fetchFollowingSet(supabase, walletAddress) : Promise.resolve(new Set<string>()),
+      ]);
       if (queryError) throw queryError;
-      const basePosts = (rows ?? []) as unknown as (Post & { author: PostWithAuthor["author"] })[];
+      const allPosts = (rows ?? []) as unknown as (Post & { author: PostWithAuthor["author"] })[];
+      // Gated (followers-only) posts are filtered out here rather than via
+      // RLS, since this app authenticates by wallet address, not Supabase
+      // Auth — the anon key can read every row, so visibility for gated
+      // posts is enforced client-side against the current wallet's follows.
+      const basePosts = allPosts.filter((p) => canSeeGatedPost(p, walletAddress, followingSet));
 
       const postIds = basePosts.map((p) => p.id);
       const repostSourceIds = basePosts.map((p) => p.repost_of).filter((id): id is string => !!id);
@@ -81,7 +111,7 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
           ? supabase
               .from("posts")
               .select(
-                "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, verification_tier)"
+                "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og)"
               )
               .in("id", repostSourceIds)
           : Promise.resolve({ data: [] as (Post & { author: PostWithAuthor["author"] })[] }),
@@ -109,7 +139,9 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
 
       const repostedById = new Map<string, Post & { author: PostWithAuthor["author"] }>();
       for (const rp of (repostedRows.data ?? []) as (Post & { author: PostWithAuthor["author"] })[]) {
-        repostedById.set(rp.id, rp);
+        if (canSeeGatedPost(rp, walletAddress, followingSet)) {
+          repostedById.set(rp.id, rp);
+        }
       }
 
       const pollCounts = new Map<string, number[]>();
@@ -138,7 +170,7 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
 
       return basePosts.map(toEnriched);
     },
-    [authorWallet, walletAddress]
+    [authorWallet, singlePostId, walletAddress]
   );
 
   const refresh = useCallback(async () => {
@@ -193,12 +225,12 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
   }, [fetchPage, hasMore, loadingMore, posts]);
 
   const createPost = useCallback(
-    async (content: string, imageUrls?: string[]) => {
+    async (content: string, imageUrls?: string[], isGated?: boolean, videoUrl?: string) => {
       if (!walletAddress) throw new Error("Connect your wallet first to post.");
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authorWallet: walletAddress, content, imageUrls }),
+        body: JSON.stringify({ authorWallet: walletAddress, content, imageUrls, isGated, videoUrl }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -311,5 +343,31 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
     [walletAddress, posts, refresh]
   );
 
-  return { posts, loading, loadingMore, hasMore, error, loadMore, refresh, createPost, createPoll, vote, repost, toggleReaction };
+  const deletePost = useCallback(
+    async (postId: string) => {
+      if (!walletAddress) throw new Error("Connect your wallet first to delete a post.");
+
+      const previous = posts;
+      setPosts((prev) => prev.filter((p) => p.id !== postId && p.repost_of !== postId));
+
+      try {
+        const res = await fetch(`/api/posts/${postId}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error ?? "Failed to delete post.");
+        }
+      } catch (err) {
+        console.error("[TwoBlock] Failed to delete post:", err);
+        setPosts(previous);
+        throw err;
+      }
+    },
+    [walletAddress, posts]
+  );
+
+  return { posts, loading, loadingMore, hasMore, error, loadMore, refresh, createPost, createPoll, vote, repost, toggleReaction, deletePost };
 }

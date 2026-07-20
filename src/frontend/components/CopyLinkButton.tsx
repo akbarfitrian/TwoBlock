@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { LinkIcon, CheckIcon } from "@/frontend/components/icons";
+import { postHref } from "@/frontend/lib/format";
 
-export function CopyLinkButton({ authorWallet, postId }: { authorWallet: string; postId: string }) {
+export function CopyLinkButton({ postId }: { postId: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const url = `${window.location.origin}/profile/${authorWallet}#post-${postId}`;
+    const url = `${window.location.origin}${postHref(postId)}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

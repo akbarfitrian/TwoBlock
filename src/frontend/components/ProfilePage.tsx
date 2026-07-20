@@ -6,24 +6,27 @@ import { useViewedProfile } from "@/frontend/hooks/useViewedProfile";
 import { usePosts } from "@/frontend/hooks/usePosts";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { FollowButton } from "@/frontend/components/FollowButton";
-import { VerifiedBadge } from "@/frontend/components/VerifiedBadge";
+import { OGBadge } from "@/frontend/components/OGBadge";
 import { PostCard } from "@/frontend/components/PostCard";
 import { EditProfileModal } from "@/frontend/components/EditProfileModal";
 import { BackButton } from "@/frontend/components/BackButton";
 import { CameraIcon, MessageIcon } from "@/frontend/components/icons";
 import { avatarColor, displayName, initials, shortenAddress } from "@/frontend/lib/format";
 
-export function ProfilePage({ walletAddress }: { walletAddress: string }) {
+export function ProfilePage({ walletAddress: identifier }: { walletAddress: string }) {
   const { walletAddress: myWallet } = useTwoBlockAuth();
-  const { profile, followerCount, followingCount, postCount, loading, notFound, refresh } = useViewedProfile(walletAddress);
-  const { posts, loadingMore, hasMore, loadMore, repost, toggleReaction, vote } = usePosts({ authorWallet: walletAddress });
+  const { profile, followerCount, followingCount, postCount, loading, notFound, refresh } = useViewedProfile(identifier);
+  // Downstream actions (posts, follow, messaging) always key off the actual
+  // wallet address, even though the page was reached via a username link.
+  const walletAddress = profile?.wallet_address ?? identifier;
+  const { posts, loadingMore, hasMore, loadMore, repost, toggleReaction, vote, deletePost } = usePosts({ authorWallet: walletAddress });
   const [editing, setEditing] = useState(false);
 
   if (loading) return <p className="px-4 py-6 text-center text-[14px] text-ink-muted">Loading profile…</p>;
   if (notFound || !profile) {
     return (
       <p className="px-4 py-6 text-center text-[14px] text-ink-muted">
-        No profile registered for wallet {shortenAddress(walletAddress)}.
+        No profile found for {identifier}.
       </p>
     );
   }
@@ -64,9 +67,12 @@ export function ProfilePage({ walletAddress }: { walletAddress: string }) {
           <div className="min-w-0 flex-1">
             <h2 className="flex items-center gap-1 font-display text-[18px] font-bold text-ink">
               {displayName(profile.username, profile.wallet_address)}
-              <VerifiedBadge tier={profile.verification_tier} />
+              <OGBadge isOg={profile.is_og} />
             </h2>
             <span className="font-mono text-[13px] text-ink-muted">{shortenAddress(profile.wallet_address)}</span>
+            {profile.is_og && profile.og_member_since_block != null && (
+              <p className="mt-0.5 text-[12px] text-ink-faint">Member since block {profile.og_member_since_block}</p>
+            )}
             {profile.bio && <p className="mt-1 text-[14px] text-ink">{profile.bio}</p>}
             <div className="mt-2 flex gap-4 text-[13px] text-ink-muted">
               <span>
@@ -112,9 +118,11 @@ export function ProfilePage({ walletAddress }: { walletAddress: string }) {
 
       <div className="flex flex-col border-t border-surface-border">
         {posts.length === 0 && <p className="px-4 py-6 text-center text-[14px] text-ink-muted">No posts yet.</p>}
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} onReact={toggleReaction} onRepost={repost} onVote={vote} />
-        ))}
+        <div className="flex flex-col gap-3 p-4">
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} onReact={toggleReaction} onRepost={repost} onVote={vote} onDelete={deletePost} />
+          ))}
+        </div>
         {hasMore && (
           <button
             className="mx-4 my-4 rounded-full border border-surface-border py-2.5 text-[14px] font-semibold text-ink transition-colors hover:bg-surface-hover disabled:opacity-50"

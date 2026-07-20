@@ -89,18 +89,18 @@ export async function GET(req: NextRequest) {
   const otherWallets = rows.map((r) => r.otherWallet);
   const profileByWallet = new Map<
     string,
-    { username: string | null; avatar_url: string | null; verification_tier: string }
+    { username: string | null; avatar_url: string | null; is_og: boolean }
   >();
   if (otherWallets.length > 0) {
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("wallet_address, username, avatar_url, verification_tier")
+      .select("wallet_address, username, avatar_url, is_og")
       .in("wallet_address", otherWallets);
     for (const p of profiles ?? []) {
       profileByWallet.set(p.wallet_address, {
         username: p.username,
         avatar_url: p.avatar_url,
-        verification_tier: p.verification_tier,
+        is_og: p.is_og,
       });
     }
   }
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
       unread,
       otherUsername: profileByWallet.get(r.otherWallet)?.username ?? null,
       otherAvatarUrl: profileByWallet.get(r.otherWallet)?.avatar_url ?? null,
-      otherVerificationTier: profileByWallet.get(r.otherWallet)?.verification_tier ?? "free",
+      otherIsOg: profileByWallet.get(r.otherWallet)?.is_og ?? false,
     };
   });
 

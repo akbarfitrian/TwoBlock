@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useProfile } from "@/frontend/hooks/useProfile";
-import { VerifiedBadge } from "@/frontend/components/VerifiedBadge";
+import { OGBadge } from "@/frontend/components/OGBadge";
 import { MoreIcon, LogoutIcon, WalletIcon } from "@/frontend/components/icons";
 import { avatarColor, displayName, initials, shortenAddress } from "@/frontend/lib/format";
 
@@ -81,7 +81,7 @@ export function ConnectWalletButton() {
         <span className="hidden min-w-0 flex-1 flex-col justify-center text-left leading-tight lg:flex">
           <span className="flex min-w-0 items-center">
             <span className="truncate text-[13.5px] font-bold text-ink">{displayName(profile?.username ?? null, walletAddress)}</span>
-            {profile && <VerifiedBadge tier={profile.verification_tier} size={13} />}
+            {profile && <OGBadge isOg={profile.is_og} size={13} />}
           </span>
           {profile?.username && (
             <span className="truncate font-mono text-[11.5px] text-ink-faint">{shortenAddress(walletAddress)}</span>

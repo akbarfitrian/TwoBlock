@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useNotifications, type NotificationItem, type NotificationType } from "@/frontend/hooks/useNotifications";
-import { VerifiedBadge } from "@/frontend/components/VerifiedBadge";
+import { OGBadge } from "@/frontend/components/OGBadge";
 import { BackButton } from "@/frontend/components/BackButton";
 import { BellIcon } from "@/frontend/components/icons";
-import { avatarColor, displayName, formatRelativeTime, initials } from "@/frontend/lib/format";
+import { avatarColor, displayName, formatRelativeTime, initials, profileHref } from "@/frontend/lib/format";
 
 const TYPE_TEXT: Record<NotificationType, string> = {
   follow: "started following you",
@@ -73,7 +73,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: () 
           {actor ? (
             <b className="font-semibold">
               {displayName(actor.username, actor.wallet_address)}
-              <VerifiedBadge tier={actor.verification_tier} />
+              <OGBadge isOg={actor.is_og} />
             </b>
           ) : (
             <b className="font-semibold">TwoBlock</b>
@@ -92,7 +92,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: () 
 
   if (actor) {
     return (
-      <Link href={`/profile/${actor.wallet_address}`} className={rowClass} onClick={onRead}>
+      <Link href={profileHref(actor.username, actor.wallet_address)} className={rowClass} onClick={onRead}>
         {body}
       </Link>
     );

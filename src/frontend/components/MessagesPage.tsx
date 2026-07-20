@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useConversations, useMessages } from "@/frontend/hooks/useMessages";
 import { useViewedProfile } from "@/frontend/hooks/useViewedProfile";
-import { avatarColor, displayName, formatRelativeTime, initials } from "@/frontend/lib/format";
+import { avatarColor, displayName, formatRelativeTime, initials, profileHref } from "@/frontend/lib/format";
 import { linkify } from "@/frontend/lib/linkify";
 import { SendIcon } from "@/frontend/components/icons";
-import { VerifiedBadge } from "@/frontend/components/VerifiedBadge";
+import { OGBadge } from "@/frontend/components/OGBadge";
 import { BackButton } from "@/frontend/components/BackButton";
 
 export function MessagesPage() {
@@ -47,7 +47,7 @@ export function MessagesPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 truncate font-mono text-[13px] font-semibold text-ink">
               <span className="truncate">{displayName(thread.otherUsername, thread.otherWallet)}</span>
-              <VerifiedBadge tier={thread.otherVerificationTier} size={13} />
+              <OGBadge isOg={thread.otherIsOg} size={13} />
             </div>
             <div className={`truncate text-[13px] ${thread.unread ? "font-semibold text-ink" : "text-ink-muted"}`}>
               {thread.lastMessageFromMe ? "You: " : ""}
@@ -103,7 +103,7 @@ function ConversationPanel({ myWallet, otherWallet }: { myWallet: string; otherW
       <header className="flex items-center gap-2.5 border-b border-surface-border px-4 py-3.5">
         <BackButton href="/messages" />
         <Link
-          href={`/profile/${otherWallet}`}
+          href={profileHref(otherProfile?.username ?? null, otherWallet)}
           className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-[12px] font-semibold text-white"
           style={{ background: avatarColor(otherWallet) }}
         >
@@ -114,10 +114,10 @@ function ConversationPanel({ myWallet, otherWallet }: { myWallet: string; otherW
           )}
         </Link>
         <div className="flex items-center gap-1">
-          <Link href={`/profile/${otherWallet}`} className="font-semibold text-ink hover:underline">
+          <Link href={profileHref(otherProfile?.username ?? null, otherWallet)} className="font-semibold text-ink hover:underline">
             {displayName(otherProfile?.username ?? null, otherWallet)}
           </Link>
-          {otherProfile && <VerifiedBadge tier={otherProfile.verification_tier} />}
+          {otherProfile && <OGBadge isOg={otherProfile.is_og} />}
         </div>
       </header>
 

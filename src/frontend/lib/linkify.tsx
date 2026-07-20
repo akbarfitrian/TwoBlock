@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
+import { profileHref } from "@/frontend/lib/format";
 
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 const MENTION_RE = /(^|\s)(@[a-zA-Z0-9_]{3,20})/g;
@@ -33,10 +35,15 @@ export function linkify(text: string, linkClassName = "text-brand-blue hover:und
       const chunk = mentionSplit[j];
       if (!chunk) continue;
       if (chunk.startsWith("@") && /^@[a-zA-Z0-9_]{3,20}$/.test(chunk)) {
+        const username = chunk.slice(1);
         nodes.push(
-          <span key={`mention-${i}-${j}`} className="font-medium text-brand-blue">
+          <Link
+            key={`mention-${i}-${j}`}
+            href={profileHref(username, username)}
+            className="font-medium text-brand-blue hover:underline"
+          >
             {chunk}
-          </span>
+          </Link>
         );
       } else {
         nodes.push(chunk);

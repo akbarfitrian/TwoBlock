@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 import { completeQuestOnce, refreshPostingStreak } from "@/shared/quests";
+import { getTierLimits } from "@/shared/tier-limits";
 
 export async function POST(req: NextRequest) {
-  const { authorWallet, content, repostOf, postType, pollOptions, pollDurationHours, imageUrls } = await req.json();
+  const { authorWallet, content, repostOf, postType, pollOptions, pollDurationHours, imageUrls, isGated, videoUrl } = await req.json();
 
   if (!authorWallet || !isAddress(authorWallet)) {
     return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("verification_tier")
+    .select("is_og")
     .eq("wallet_address", checksummed)
     .maybeSingle();
 
@@ -22,16 +23,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Profile not found. Connect your wallet first." }, { status: 404 });
   }
 
-  const { data: pricing, error: pricingError } = await supabase
-    .from("verification_pricing")
-    .select("daily_post_limit, max_post_chars, can_attach_image")
-    .eq("tier", profile.verification_tier)
-    .single();
-
-  if (pricingError || !pricing) {
-    console.error("[TwoBlock] Failed to fetch verification_pricing:", pricingError);
-    return NextResponse.json({ error: "Failed to verify tier limits" }, { status: 500 });
-  }
+  const limits = getTierLimits(profile.is_og);
+  const pricing = {
+    daily_post_limit: limits.dailyPostLimit,
+    max_post_chars: limits.maxPostChars,
+    can_attach_image: limits.canAttachImage,
+    can_attach_video: limits.canAttachVideo,
+  };
 
   if (repostOf) {
     if (typeof repostOf !== "string") {
@@ -74,15 +72,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (postType === "poll") {
-    if (profile.verification_tier !== "verified_max") {
-      return NextResponse.json({ error: "Creating polls is only available for Verified Max tier" }, { status: 403 });
+    if (!getTierLimits(profile.is_og).canCreatePoll) {
+      return NextResponse.json({ error: "Creating polls is only available for OG members" }, { status: 403 });
     }
     if (typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json({ error: "Poll question can't be empty" }, { status: 400 });
     }
     const question = content.trim();
     if (question.length > pricing.max_post_chars) {
-      return NextResponse.json({ error: `Pertanyaan melebihi batas ${pricing.max_post_chars} karakter` }, { status: 400 });
+      return NextResponse.json({ error: `Question exceeds ${pricing.max_post_chars} character limit` }, { status: 400 });
     }
     const options: unknown[] = Array.isArray(pollOptions) ? pollOptions : [];
     const cleanOptions = options.map((o) => (typeof o === "string" ? o.trim() : "")).filter((o) => o.length > 0);
@@ -133,7 +131,7 @@ export async function POST(req: NextRequest) {
   const trimmed = content.trim();
   if (trimmed.length > pricing.max_post_chars) {
     return NextResponse.json(
-      { error: `Post melebihi batas ${pricing.max_post_chars} karakter untuk tier ${profile.verification_tier}` },
+      { error: `Post exceeds the ${pricing.max_post_chars} character limit for ${profile.is_og ? "OG" : "free"}` },
       { status: 400 }
     );
   }
@@ -150,7 +148,7 @@ export async function POST(req: NextRequest) {
     }
     if (imageUrls.length > 0 && !pricing.can_attach_image) {
       return NextResponse.json(
-        { error: "Image attachments are only available for Verified Pro & Verified Max tiers" },
+        { error: "Image attachments are only available for OG members" },
         { status: 403 }
       );
     }
@@ -160,9 +158,44 @@ export async function POST(req: NextRequest) {
     cleanImageUrls = imageUrls;
   }
 
+  let cleanVideoUrl: string | null = null;
+  if (videoUrl !== undefined && videoUrl !== null) {
+    if (typeof videoUrl !== "string" || !/^https?:\/\//.test(videoUrl)) {
+      return NextResponse.json({ error: "Invalid videoUrl" }, { status: 400 });
+    }
+    if (!pricing.can_attach_video) {
+      return NextResponse.json(
+        { error: "Video attachments are only available for OG members" },
+        { status: 403 }
+      );
+    }
+    if (cleanImageUrls.length > 0) {
+      return NextResponse.json({ error: "A post can have images or a video, not both" }, { status: 400 });
+    }
+    cleanVideoUrl = videoUrl;
+  }
+
+  let gated = false;
+  if (isGated !== undefined && isGated !== null) {
+    if (typeof isGated !== "boolean") {
+      return NextResponse.json({ error: "Invalid isGated" }, { status: 400 });
+    }
+    if (isGated && !limits.canGatePost) {
+      return NextResponse.json({ error: "Gated posts are only available for OG members" }, { status: 403 });
+    }
+    gated = isGated;
+  }
+
   const { data, error } = await supabase
     .from("posts")
-    .insert({ author_wallet: checksummed, content: trimmed, post_type: "text", image_urls: cleanImageUrls })
+    .insert({
+      author_wallet: checksummed,
+      content: trimmed,
+      post_type: "text",
+      image_urls: cleanImageUrls,
+      video_url: cleanVideoUrl,
+      is_gated: gated,
+    })
     .select("id")
     .single();
 
@@ -172,6 +205,7 @@ export async function POST(req: NextRequest) {
   }
 
   await completeQuestOnce(supabase, checksummed, "first_post");
+  if (gated) await completeQuestOnce(supabase, checksummed, "og_gate_first_post");
   await refreshPostingStreak(supabase, checksummed);
 
   return NextResponse.json({ postId: data.id });

@@ -6,6 +6,21 @@ export function displayName(username: string | null, walletAddress: string): str
   return username ? `@${username}` : shortenAddress(walletAddress);
 }
 
+// Prefer a username-based permalink when the profile has one set, falling
+// back to the wallet address otherwise. Usernames can change (subject to a
+// 30-day cooldown, see 0008_username_cooldown.sql), but the [wallet] route
+// resolves both a username and a wallet address, so links keep working even
+// after the profile changes their username later.
+export function profileHref(username: string | null, walletAddress: string): string {
+  return `/profile/${username ?? walletAddress}`;
+}
+
+// Canonical, stable permalink for a single post — doesn't depend on the
+// author's username (which can change), so this is what gets shared/copied.
+export function postHref(postId: string): string {
+  return `/post/${postId}`;
+}
+
 export function initials(username: string | null, walletAddress: string): string {
   const source = username ?? walletAddress.slice(2);
   return source.slice(0, 2).toUpperCase();
