@@ -10,7 +10,7 @@ function isUUID(value: unknown): value is string {
 export async function POST(req: NextRequest) {
   const { walletAddress, postId, reaction } = await req.json();
 
-  if (!walletAddress || !isAddress(walletAddress) || !isUUID(postId) || !["agree", "disagree"].includes(reaction)) {
+  if (!walletAddress || !isAddress(walletAddress) || !isUUID(postId) || reaction !== "love") {
     return NextResponse.json({ error: "Invalid reaction payload" }, { status: 400 });
   }
   const checksummed = getAddress(walletAddress);

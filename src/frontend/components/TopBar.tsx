@@ -2,22 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useProfile } from "@/frontend/hooks/useProfile";
 import { useNotifications } from "@/frontend/hooks/useNotifications";
+import { useTheme } from "@/frontend/hooks/useTheme";
 import { OGBadge } from "@/frontend/components/OGBadge";
 import {
-  SearchIcon,
-  CommandIcon,
-  FeatherIcon,
   BellIcon,
   ChevronDownIcon,
   WalletIcon,
   UserIcon,
   LogoutIcon,
+  SettingsIcon,
+  HelpIcon,
+  DocsIcon,
+  SunIcon,
+  MoonIcon,
+  RefreshIcon,
+  FeatherIcon,
 } from "@/frontend/components/icons";
 import { avatarColor, displayName, formatRelativeTime, initials, profileHref, shortenAddress } from "@/frontend/lib/format";
+
+// Fired to tell the feed's PostComposer to open its modal. When we're
+// already on "/" this reaches the mounted composer directly; when we're
+// not, OPEN_COMPOSER_STORAGE_KEY carries the intent across the navigation
+// so the composer can pick it up once it mounts (see PostComposer.tsx).
+export const OPEN_COMPOSER_EVENT = "twoblock:open-composer";
+export const OPEN_COMPOSER_STORAGE_KEY = "twoblock-open-composer";
+
 
 function useClickOutside(onOutside: () => void) {
   const ref = useRef<HTMLDivElement>(null);
@@ -120,6 +133,73 @@ function NotificationsMenu() {
   );
 }
 
+function SettingsMenu() {
+  const { theme, toggleTheme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
+  const ref = useClickOutside(() => setOpen(false));
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Settings"
+        aria-expanded={open}
+      >
+        <SettingsIcon size={22} filled={open} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-surface-border bg-surface p-2 shadow-card">
+          <Link
+            href="/settings"
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+            onClick={() => setOpen(false)}
+          >
+            <HelpIcon size={16} />
+            Help
+          </Link>
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+          >
+            <DocsIcon size={16} />
+            Docs
+          </a>
+
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-surface-border px-2.5 pt-2">
+            <span className="text-[14px] font-semibold text-ink-muted">Theme</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                aria-label="Toggle dark mode"
+                onClick={toggleTheme}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-brand-blue/50 bg-brand-blue/10 text-brand-blue transition-colors hover:bg-brand-blue/20"
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <MoonIcon size={15} /> : <SunIcon size={15} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-surface-hover hover:text-ink"
+                title="Reset to system theme"
+              >
+                <RefreshIcon size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AccountMenu() {
   const { walletAddress, logout } = useTwoBlockAuth();
   const { profile } = useProfile();
@@ -132,11 +212,12 @@ function AccountMenu() {
     <div ref={ref} className="relative">
       <button
         type="button"
-        className="flex items-center gap-2 rounded-full border border-surface-border bg-surface py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-surface-hover"
+        className="flex h-11 shrink-0 items-center gap-2 rounded-full pl-1 pr-3 transition-colors hover:bg-surface"
         onClick={() => setOpen((v) => !v)}
+        aria-label="Account menu"
       >
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-[11px] font-semibold text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-[12px] font-semibold text-white"
           style={{ background: avatarColor(walletAddress) }}
         >
           {profile?.avatar_url ? (
@@ -145,9 +226,9 @@ function AccountMenu() {
             initials(profile?.username ?? null, walletAddress)
           )}
         </span>
-        <span className="hidden items-center gap-1 text-[14px] font-semibold text-ink sm:flex">
-          {displayName(profile?.username ?? null, walletAddress)}
-          {profile && <OGBadge isOg={profile.is_og} size={13} />}
+        <span className="hidden max-w-[140px] items-center gap-1 truncate text-[14px] font-semibold text-ink sm:flex">
+          <span className="truncate">{displayName(profile?.username ?? null, walletAddress)}</span>
+          <OGBadge isOg={profile?.is_og ?? false} size={13} />
         </span>
         <ChevronDownIcon size={14} />
       </button>
@@ -190,58 +271,60 @@ function AccountMenu() {
   );
 }
 
-export function TopBar() {
+function ComposeButton() {
   const router = useRouter();
-  const { ready, authenticated, login } = useTwoBlockAuth();
+  const pathname = usePathname();
 
-  const handleStartPosting = () => {
-    router.push("/");
-    // Give the feed a tick to mount, then focus the composer textarea.
-    setTimeout(() => {
-      const el = document.querySelector<HTMLTextAreaElement>("[data-composer-textarea]");
-      el?.focus();
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
+  const handleClick = () => {
+    if (pathname === "/") {
+      window.dispatchEvent(new Event(OPEN_COMPOSER_EVENT));
+    } else {
+      sessionStorage.setItem(OPEN_COMPOSER_STORAGE_KEY, "1");
+      router.push("/");
+    }
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-surface-border bg-base/90 px-4 py-3 backdrop-blur">
-      <Link
-        href="/search"
-        className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full border border-surface-border bg-surface px-4 py-2.5 text-ink-faint transition-colors hover:border-surface-borderStrong"
-      >
-        <SearchIcon size={16} />
-        <span className="min-w-0 flex-1 truncate text-[14px]">Search TwoBlock…</span>
-        <span className="hidden shrink-0 items-center gap-0.5 rounded-md border border-surface-border px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint sm:flex">
-          <CommandIcon size={11} />K
-        </span>
-      </Link>
+    <button
+      type="button"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+      onClick={handleClick}
+      aria-label="New post"
+      title="New post"
+    >
+      <FeatherIcon size={20} />
+    </button>
+  );
+}
 
-      <button
-        type="button"
-        onClick={handleStartPosting}
-        className="flex shrink-0 items-center gap-2 rounded-full bg-brand-gradient px-4 py-2.5 text-[14px] font-bold text-accent-contrast shadow-glow transition-transform duration-150 hover:scale-[1.02] active:scale-95"
-      >
-        <FeatherIcon size={16} />
-        <span className="hidden sm:inline">Start Posting</span>
-      </button>
+export function TopBar() {
+  const { ready, authenticated, login } = useTwoBlockAuth();
 
-      {ready && authenticated ? (
-        <>
-          <NotificationsMenu />
-          <AccountMenu />
-        </>
-      ) : (
-        ready && (
-          <button
-            type="button"
-            onClick={login}
-            className="shrink-0 rounded-full border border-surface-border bg-surface px-4 py-2.5 text-[14px] font-bold text-ink transition-colors hover:bg-surface-hover"
-          >
-            Connect Wallet
-          </button>
-        )
-      )}
+  return (
+    <header className="sticky top-0 z-40 flex h-16 min-w-0 flex-wrap items-center gap-2 border-b border-surface-border bg-base/90 pl-8 pr-4 backdrop-blur">
+      <div className="flex shrink-0 items-center gap-1">
+        {ready && authenticated ? (
+          <>
+            <ComposeButton />
+            <NotificationsMenu />
+            <SettingsMenu />
+            <AccountMenu />
+          </>
+        ) : (
+          ready && (
+            <>
+              <SettingsMenu />
+              <button
+                type="button"
+                onClick={login}
+                className="shrink-0 rounded-full border border-surface-border bg-surface px-4 py-2.5 text-[14px] font-bold text-ink transition-colors hover:bg-surface-hover"
+              >
+                Connect Wallet
+              </button>
+            </>
+          )
+        )}
+      </div>
     </header>
   );
 }

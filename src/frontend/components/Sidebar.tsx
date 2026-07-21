@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useNotifications } from "@/frontend/hooks/useNotifications";
 import { useConversations } from "@/frontend/hooks/useMessages";
-import { useTheme } from "@/frontend/hooks/useTheme";
+import { useProfile } from "@/frontend/hooks/useProfile";
+import { OG_PRICE_USDC } from "@/shared/contracts/two-block-payments";
 import {
   LogoMark,
   HomeIcon,
@@ -14,15 +14,28 @@ import {
   MessageIcon,
   TrophyIcon,
   WalletIcon,
-  SettingsIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  HelpIcon,
-  DocsIcon,
-  SunIcon,
-  MoonIcon,
-  RefreshIcon,
+  OGNavIcon,
 } from "@/frontend/components/icons";
+
+function OGUpgradeCard() {
+  return (
+    <Link
+      href="/wallet"
+      className="mt-4 hidden w-full flex-col gap-2.5 rounded-2xl border border-brand-blue/40 bg-brand-blue/10 p-4 transition-colors hover:bg-brand-blue/15 lg:flex"
+    >
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-gradient text-accent-contrast shadow-glow">
+        <OGNavIcon size={18} filled />
+      </span>
+      <span className="text-[15px] font-bold leading-tight text-ink">Upgrade to OG</span>
+      <span className="text-[13px] leading-snug text-ink-muted">
+        Post more, unlock analytics, and get lower tip fees — for a one-time payment.
+      </span>
+      <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-brand-gradient px-3.5 py-2 text-[13px] font-bold text-accent-contrast shadow-glow transition-transform duration-150 hover:scale-[1.02]">
+        Upgrade now — ${OG_PRICE_USDC}
+      </span>
+    </Link>
+  );
+}
 
 function NavLink({
   href,
@@ -65,9 +78,9 @@ export function Sidebar() {
   const { walletAddress } = useTwoBlockAuth();
   const { unreadCount } = useNotifications();
   const { unreadCount: unreadMessages } = useConversations();
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { profile } = useProfile();
   const pathname = usePathname();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const isOg = !!profile?.is_og;
 
   return (
     <aside className="sticky top-0 hidden h-screen flex-col items-start gap-1 border-r border-surface-border px-3 py-4 md:flex">
@@ -111,66 +124,7 @@ export function Sidebar() {
         )}
       </nav>
 
-      <div className="mt-auto flex w-full flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => setSettingsOpen((v) => !v)}
-          className="flex w-auto items-center gap-3 rounded-xl px-3 py-3 text-[16px] font-bold text-ink-muted transition-colors hover:bg-surface hover:text-ink lg:w-full"
-          aria-expanded={settingsOpen}
-        >
-          <SettingsIcon size={22} filled={settingsOpen} />
-          <span className="hidden lg:inline">Settings</span>
-          <span className="ml-auto hidden text-ink-faint lg:inline">
-            {settingsOpen ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
-          </span>
-        </button>
-
-        {settingsOpen && (
-          <div className="hidden w-full flex-col gap-0.5 rounded-2xl border border-surface-border bg-surface p-2 lg:flex">
-            <Link
-              href="/settings"
-              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <HelpIcon size={16} />
-              Help
-            </Link>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
-            >
-              <DocsIcon size={16} />
-              Docs
-            </a>
-
-            <div className="mt-1 flex items-center justify-between gap-2 border-t border-surface-border px-2.5 pt-2">
-              <span className="text-[14px] font-semibold text-ink-muted">Theme</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={theme === "dark"}
-                  aria-label="Toggle dark mode"
-                  onClick={toggleTheme}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-brand-blue/50 bg-brand-blue/10 text-brand-blue transition-colors hover:bg-brand-blue/20"
-                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                >
-                  {theme === "dark" ? <MoonIcon size={15} /> : <SunIcon size={15} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-surface-hover hover:text-ink"
-                  title="Reset to system theme"
-                >
-                  <RefreshIcon size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {walletAddress && !isOg && <OGUpgradeCard />}
     </aside>
   );
 }

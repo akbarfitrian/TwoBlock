@@ -6,7 +6,7 @@ import { useNotifications, type NotificationItem, type NotificationType } from "
 import { OGBadge } from "@/frontend/components/OGBadge";
 import { BackButton } from "@/frontend/components/BackButton";
 import { BellIcon } from "@/frontend/components/icons";
-import { avatarColor, displayName, formatRelativeTime, initials, profileHref } from "@/frontend/lib/format";
+import { avatarColor, displayName, formatRelativeTime, initials, postHref, profileHref } from "@/frontend/lib/format";
 
 const TYPE_TEXT: Record<NotificationType, string> = {
   follow: "started following you",
@@ -14,6 +14,8 @@ const TYPE_TEXT: Record<NotificationType, string> = {
   tip: "sent a tip on your post",
   reaction: "reacted to your post",
   poll_result: "your poll results are in",
+  comment: "replied to your post",
+  mention: "mentioned you in a reply",
 };
 
 export function NotificationsPage() {
@@ -26,7 +28,7 @@ export function NotificationsPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center justify-between border-b border-surface-border px-4 py-4">
+      <div className="flex h-16 items-center justify-between border-b border-surface-border px-4">
         <div className="flex items-center gap-3">
           <BackButton />
           <h1 className="font-display text-[20px] font-bold text-ink">Notifications</h1>
@@ -90,9 +92,16 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: () 
     item.is_read ? "" : "bg-brand-blue/5"
   }`;
 
-  if (actor) {
+  const destination =
+    (item.type === "comment" || item.type === "mention") && item.post_id
+      ? `${postHref(item.post_id)}${item.comment_id ? `#comment-${item.comment_id}` : ""}`
+      : actor
+      ? profileHref(actor.username, actor.wallet_address)
+      : null;
+
+  if (destination) {
     return (
-      <Link href={profileHref(actor.username, actor.wallet_address)} className={rowClass} onClick={onRead}>
+      <Link href={destination} className={rowClass} onClick={onRead}>
         {body}
       </Link>
     );

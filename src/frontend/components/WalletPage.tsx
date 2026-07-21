@@ -232,7 +232,7 @@ export function WalletPage() {
 
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-3 border-b border-surface-border px-4 py-4">
+      <div className="flex h-16 items-center gap-3 border-b border-surface-border px-4">
         <BackButton />
         <h1 className="font-display text-[20px] font-bold text-ink">Wallet</h1>
       </div>

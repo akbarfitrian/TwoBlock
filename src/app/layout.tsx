@@ -45,12 +45,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <div className="mx-auto flex min-h-screen w-full max-w-[1600px] items-start justify-center md:grid md:grid-cols-[76px_minmax(0,630px)] lg:grid-cols-[248px_990px]">
             <Sidebar />
-            <div className="flex min-h-screen w-full flex-col">
-              <TopBar />
-              <div className="grid flex-1 grid-cols-1 items-start lg:grid-cols-[minmax(0,630px)_360px]">
-                <main className="min-h-screen w-full border-r border-surface-border">{children}</main>
+            <div className="grid w-full grid-cols-1 items-start lg:grid-cols-[minmax(0,570px)_420px]">
+              <div className="order-1 flex flex-col lg:order-2 lg:sticky lg:top-0 lg:h-screen">
+                <TopBar />
                 <RightPanel />
               </div>
+              <main className="order-2 min-h-screen w-full border-r border-surface-border lg:order-1">{children}</main>
             </div>
           </div>
         </Providers>

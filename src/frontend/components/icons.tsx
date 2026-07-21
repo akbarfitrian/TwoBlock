@@ -422,6 +422,21 @@ export function BellIcon({ size = 22, filled = false }: IconProps) {
   )
 }
 
+export function CommentIcon({ size = 16, filled = false }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3.5c-5.25 0-9.5 3.53-9.5 7.88 0 2.62 1.56 4.94 3.96 6.36-.14.99-.55 2.2-1.42 3.35a.5.5 0 00.5.79c2.03-.5 3.6-1.42 4.66-2.19.58.1 1.18.15 1.8.15 5.25 0 9.5-3.53 9.5-7.88S17.25 3.5 12 3.5z"
+        stroke="currentColor"
+        strokeWidth={filled ? 0 : 2.1}
+        fill={filled ? "currentColor" : "none"}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function MessageIcon({ size = 20, filled = false }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -470,6 +485,21 @@ export function ThumbsDownIcon({ size = 17, filled = false }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path
         d="M17 13V4h3a1 1 0 011 1v7a1 1 0 01-1 1h-3zm0 0-4.2 8a2 2 0 01-3.8-.9V15h-4a2 2 0 01-2-2l1.5-7.4A2 2 0 016.5 4H15a2 2 0 012 2v7z"
+        stroke="currentColor"
+        strokeWidth={filled ? 0 : 2}
+        fill={filled ? 'currentColor' : 'none'}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function HeartIcon({ size = 17, filled = false }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 20.5s-7.5-4.6-10-9.3C.4 8 1.7 4.5 5 3.4c2.2-.7 4.4.2 5.6 2.1a.5.5 0 00.8 0C12.6 3.6 14.8 2.7 17 3.4c3.3 1.1 4.6 4.6 3 7.8-2.5 4.7-10 9.3-10 9.3z"
         stroke="currentColor"
         strokeWidth={filled ? 0 : 2}
         fill={filled ? 'currentColor' : 'none'}

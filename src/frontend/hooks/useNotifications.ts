@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
-export type NotificationType = "follow" | "repost" | "tip" | "reaction" | "poll_result";
+export type NotificationType = "follow" | "repost" | "tip" | "reaction" | "poll_result" | "comment" | "mention";
 
 export interface NotificationItem {
   id: string;
@@ -11,6 +11,7 @@ export interface NotificationItem {
   created_at: string;
   post_id: string | null;
   tip_id: string | null;
+  comment_id: string | null;
   actor: {
     wallet_address: string;
     username: string | null;

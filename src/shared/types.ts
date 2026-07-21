@@ -38,14 +38,30 @@ export interface PostWithAuthor extends Post {
     "wallet_address" | "username" | "avatar_url" | "is_og"
   >;
   tip_total_usdc: number;
-  agree_count: number;
-  disagree_count: number;
+  love_count: number;
 
-  my_reaction: "agree" | "disagree" | null;
+  my_reaction: "love" | null;
 
   reposted_post?: PostWithAuthor | null;
 
   poll_vote_counts: number[];
 
   my_poll_vote: number | null;
+
+  comment_count: number;
+}
+
+export interface Comment {
+  id: string;
+  post_id: string;
+  author_wallet: string;
+  content: string;
+  created_at: string;
+}
+
+export interface CommentWithAuthor extends Comment {
+  author: Pick<
+    Profile,
+    "wallet_address" | "username" | "avatar_url" | "is_og"
+  >;
 }

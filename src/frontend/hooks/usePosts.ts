@@ -52,7 +52,7 @@ export interface UsePostsState {
 
   repost: (postId: string) => Promise<void>;
 
-  toggleReaction: (postId: string, reaction: "agree" | "disagree") => Promise<void>;
+  toggleReaction: (postId: string, reaction: "love") => Promise<void>;
 
   deletePost: (postId: string) => Promise<void>;
 }
@@ -100,13 +100,16 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
       const repostSourceIds = basePosts.map((p) => p.repost_of).filter((id): id is string => !!id);
       const pollIds = basePosts.filter((p) => p.post_type === "poll").map((p) => p.id);
 
-      const [tipRows, reactionRows, repostedRows, pollVoteRows] = await Promise.all([
+      const [tipRows, reactionRows, commentRows, repostedRows, pollVoteRows] = await Promise.all([
         postIds.length
           ? supabase.from("tips").select("post_id, amount_usdc").in("post_id", postIds)
           : Promise.resolve({ data: [] as { post_id: string; amount_usdc: number }[] }),
         postIds.length
           ? supabase.from("post_reactions").select("post_id, wallet_address, reaction_type").in("post_id", postIds)
           : Promise.resolve({ data: [] as { post_id: string; wallet_address: string; reaction_type: string }[] }),
+        postIds.length
+          ? supabase.from("comments").select("post_id").in("post_id", postIds)
+          : Promise.resolve({ data: [] as { post_id: string }[] }),
         repostSourceIds.length
           ? supabase
               .from("posts")
@@ -125,16 +128,18 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
         tipTotals.set(t.post_id, (tipTotals.get(t.post_id) ?? 0) + Number(t.amount_usdc));
       }
 
-      const reactionCounts = new Map<string, { agree: number; disagree: number }>();
-      const myReactions = new Map<string, "agree" | "disagree">();
+      const reactionCounts = new Map<string, number>();
+      const myReactions = new Set<string>();
       for (const r of reactionRows.data ?? []) {
-        const bucket = reactionCounts.get(r.post_id) ?? { agree: 0, disagree: 0 };
-        if (r.reaction_type === "agree") bucket.agree += 1;
-        else bucket.disagree += 1;
-        reactionCounts.set(r.post_id, bucket);
+        reactionCounts.set(r.post_id, (reactionCounts.get(r.post_id) ?? 0) + 1);
         if (walletAddress && r.wallet_address === walletAddress) {
-          myReactions.set(r.post_id, r.reaction_type as "agree" | "disagree");
+          myReactions.add(r.post_id);
         }
+      }
+
+      const commentCounts = new Map<string, number>();
+      for (const c of commentRows.data ?? []) {
+        commentCounts.set(c.post_id, (commentCounts.get(c.post_id) ?? 0) + 1);
       }
 
       const repostedById = new Map<string, Post & { author: PostWithAuthor["author"] }>();
@@ -160,9 +165,9 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
       ): PostWithAuthor => ({
         ...p,
         tip_total_usdc: tipTotals.get(p.id) ?? 0,
-        agree_count: reactionCounts.get(p.id)?.agree ?? 0,
-        disagree_count: reactionCounts.get(p.id)?.disagree ?? 0,
-        my_reaction: myReactions.get(p.id) ?? null,
+        love_count: reactionCounts.get(p.id) ?? 0,
+        my_reaction: myReactions.has(p.id) ? "love" : null,
+        comment_count: commentCounts.get(p.id) ?? 0,
         reposted_post: p.repost_of && repostedById.has(p.repost_of) ? toEnriched(repostedById.get(p.repost_of)!) : null,
         poll_vote_counts: fillZeros(pollCounts.get(p.id) ?? [], p.poll_options?.length ?? 0),
         my_poll_vote: myPollVote.get(p.id) ?? null,
@@ -308,7 +313,7 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
   );
 
   const toggleReaction = useCallback(
-    async (postId: string, reaction: "agree" | "disagree") => {
+    async (postId: string, reaction: "love") => {
       if (!walletAddress) throw new Error("Connect your wallet first to react.");
       const current = posts.find((p) => p.id === postId)?.my_reaction ?? null;
       const clearing = current === reaction;
@@ -316,15 +321,8 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
       setPosts((prev) =>
         prev.map((p) => {
           if (p.id !== postId) return p;
-          let agree = p.agree_count;
-          let disagree = p.disagree_count;
-          if (current === "agree") agree -= 1;
-          if (current === "disagree") disagree -= 1;
-          if (!clearing) {
-            if (reaction === "agree") agree += 1;
-            else disagree += 1;
-          }
-          return { ...p, agree_count: agree, disagree_count: disagree, my_reaction: clearing ? null : reaction };
+          const love = p.love_count + (clearing ? -1 : 1);
+          return { ...p, love_count: love, my_reaction: clearing ? null : reaction };
         })
       );
 

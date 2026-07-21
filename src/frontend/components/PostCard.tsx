@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { TipButton } from "@/frontend/components/TipButton";
 import { OGBadge } from "@/frontend/components/OGBadge";
-import { RepostIcon, ThumbsUpIcon, ThumbsDownIcon, MoreIcon, LinkIcon, CheckIcon, TrashIcon } from "@/frontend/components/icons";
+import { RepostIcon, HeartIcon, MoreIcon, LinkIcon, CheckIcon, TrashIcon, CommentIcon } from "@/frontend/components/icons";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { avatarColor, displayName, formatRelativeTime, initials, postHref, profileHref } from "@/frontend/lib/format";
 import { linkify } from "@/frontend/lib/linkify";
@@ -13,7 +13,7 @@ import type { PostWithAuthor } from "@/shared/types";
 
 interface PostCardProps {
   post: PostWithAuthor;
-  onReact: (postId: string, reaction: "agree" | "disagree") => Promise<void>;
+  onReact: (postId: string, reaction: "love") => Promise<void>;
   onRepost: (postId: string) => Promise<void>;
   onVote: (postId: string, optionIndex: number) => Promise<void>;
   onDelete?: (postId: string) => Promise<void>;
@@ -194,97 +194,96 @@ export function PostCard({ post, onReact, onRepost, onVote, onDelete, clickable 
         </Link>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <Link href={profileHref(target.author.username, target.author.wallet_address)} className="truncate text-[15px] font-bold text-ink hover:underline">
-              {displayName(target.author.username, target.author.wallet_address)}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Link href={profileHref(target.author.username, target.author.wallet_address)} className="truncate text-[15px] font-bold text-ink hover:underline">
+                {displayName(target.author.username, target.author.wallet_address)}
+              </Link>
+              {target.author.is_og && (
+                <span className="flex items-center gap-1 rounded-full border border-surface-border bg-surface-soft px-1.5 py-0.5">
+                  <OGBadge isOg size={16} />
+                </span>
+              )}
+              <span className="shrink-0 text-[13px] text-ink-faint">{formatRelativeTime(target.created_at)}</span>
+            </div>
+
+            <PostMenu
+              authorWallet={target.author.wallet_address}
+              postId={target.id}
+              onDelete={onDelete}
+            />
+          </div>
+
+          <p className="mt-1 whitespace-pre-wrap break-words text-[16px] leading-snug text-ink">{linkify(displayedContent)}</p>
+          {isTruncated && (
+            <Link
+              href={postHref(target.id)}
+              className="mt-1 inline-block text-[13px] font-semibold text-brand-blue hover:underline"
+            >
+              More
             </Link>
-            {target.author.is_og && (
-              <span className="flex items-center gap-1 rounded-full border border-surface-border bg-surface-soft px-1.5 py-0.5">
-                <OGBadge isOg size={16} />
-              </span>
-            )}
-            <span className="shrink-0 text-[13px] text-ink-faint">{formatRelativeTime(target.created_at)}</span>
+          )}
+
+          {target.image_urls.length > 0 && (
+            <div
+              className={`mt-3 grid gap-1 overflow-hidden rounded-2xl bg-surface-soft ${
+                target.image_urls.length === 1 ? "grid-cols-1" : "grid-cols-2"
+              }`}
+            >
+              {target.image_urls.map((url, i) =>
+                target.image_urls.length === 1 ? (
+                  <img
+                    key={url + i}
+                    src={url}
+                    alt=""
+                    loading="lazy"
+                    className="max-h-96 w-full object-contain"
+                  />
+                ) : (
+                  <div key={url + i} className="flex aspect-square items-center justify-center overflow-hidden bg-surface-soft">
+                    <img src={url} alt="" loading="lazy" className="h-full w-full object-contain" />
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {target.video_url && (
+            <div className="mt-3 overflow-hidden rounded-2xl" onClick={(e) => e.stopPropagation()}>
+              <video src={target.video_url} controls preload="metadata" className="max-h-96 w-full bg-black" />
+            </div>
+          )}
+
+          {target.post_type === "poll" && target.poll_options && <PollView post={target} onVote={onVote} />}
+
+          <div className="mt-3.5 flex items-center gap-1 border-t border-surface-border pt-3 text-ink-muted">
+              <button
+                className={`group flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium transition-colors hover:bg-danger/10 hover:text-danger ${
+                  target.my_reaction === "love" ? "text-danger" : ""
+                }`}
+                onClick={() => onReact(target.id, "love")}
+              >
+                <HeartIcon size={16} filled={target.my_reaction === "love"} />
+                <span>{target.love_count}</span>
+              </button>
+              <Link
+                href={postHref(target.id)}
+                className="flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium text-ink-muted transition-colors hover:bg-brand-blue/10 hover:text-brand-blue"
+              >
+                <CommentIcon size={16} />
+                <span>{target.comment_count}</span>
+              </Link>
+              <button
+                className="flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium text-ink-muted transition-colors hover:bg-brand-blue/10 hover:text-brand-blue disabled:opacity-50"
+                onClick={handleRepost}
+                disabled={reposting}
+              >
+                <RepostIcon size={16} />
+                {reposting && <span>…</span>}
+              </button>
+              <TipButton postId={target.id} toWallet={target.author.wallet_address as `0x${string}`} currentTotal={target.tip_total_usdc} />
           </div>
         </div>
-
-        <PostMenu
-          authorWallet={target.author.wallet_address}
-          postId={target.id}
-          onDelete={onDelete}
-        />
-      </div>
-
-      <p className="mt-3 whitespace-pre-wrap break-words text-[16px] leading-snug text-ink">{linkify(displayedContent)}</p>
-      {isTruncated && (
-        <Link
-          href={postHref(target.id)}
-          className="mt-1 inline-block text-[13px] font-semibold text-brand-blue hover:underline"
-        >
-          More
-        </Link>
-      )}
-
-      {target.image_urls.length > 0 && (
-        <div
-          className={`mt-3 grid gap-1 overflow-hidden rounded-2xl bg-surface-soft ${
-            target.image_urls.length === 1 ? "grid-cols-1" : "grid-cols-2"
-          }`}
-        >
-          {target.image_urls.map((url, i) =>
-            target.image_urls.length === 1 ? (
-              <img
-                key={url + i}
-                src={url}
-                alt=""
-                loading="lazy"
-                className="max-h-96 w-full object-contain"
-              />
-            ) : (
-              <img key={url + i} src={url} alt="" loading="lazy" className="h-full max-h-96 w-full object-cover" />
-            )
-          )}
-        </div>
-      )}
-
-      {target.video_url && (
-        <div className="mt-3 overflow-hidden rounded-2xl" onClick={(e) => e.stopPropagation()}>
-          <video src={target.video_url} controls preload="metadata" className="max-h-96 w-full bg-black" />
-        </div>
-      )}
-
-      {target.post_type === "poll" && target.poll_options && <PollView post={target} onVote={onVote} />}
-
-      <div className="mt-3.5 flex items-center justify-between border-t border-surface-border pt-3">
-        <div className="-ml-2 flex items-center gap-1 text-ink-muted">
-          <button
-            className={`group flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium transition-colors hover:bg-emerald/10 hover:text-emerald ${
-              target.my_reaction === "agree" ? "text-emerald" : ""
-            }`}
-            onClick={() => onReact(target.id, "agree")}
-          >
-            <ThumbsUpIcon size={16} filled={target.my_reaction === "agree"} />
-            <span>{target.agree_count}</span>
-          </button>
-          <button
-            className={`group flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium transition-colors hover:bg-danger/10 hover:text-danger ${
-              target.my_reaction === "disagree" ? "text-danger" : ""
-            }`}
-            onClick={() => onReact(target.id, "disagree")}
-          >
-            <ThumbsDownIcon size={16} filled={target.my_reaction === "disagree"} />
-            <span>{target.disagree_count}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 rounded-full py-1.5 pl-2 pr-3 text-[13px] font-medium transition-colors hover:bg-brand-blue/10 hover:text-brand-blue disabled:opacity-50"
-            onClick={handleRepost}
-            disabled={reposting}
-          >
-            <RepostIcon size={16} />
-            {reposting && <span>…</span>}
-          </button>
-        </div>
-
-        <TipButton postId={target.id} toWallet={target.author.wallet_address as `0x${string}`} currentTotal={target.tip_total_usdc} />
       </div>
     </article>
   );

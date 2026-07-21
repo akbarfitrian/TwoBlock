@@ -8,7 +8,7 @@ export interface TierLimits {
 
   canGatePost: boolean;
 
-  // Short video attachments (max 10MB, see upload.ts). Same eligibility as
+  // Short video attachments (max 2MB, see upload.ts). Same eligibility as
   // images for both tiers today, but kept as its own flag since video is
   // more storage-expensive and may get its own tiering later.
   canAttachVideo: boolean;

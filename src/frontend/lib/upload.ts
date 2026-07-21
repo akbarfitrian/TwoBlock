@@ -1,10 +1,10 @@
 import { createSupabaseBrowserClient } from "@/frontend/lib/supabase-client";
 
-const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 1 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 const IMAGE_TYPE_LABEL = "PNG, JPEG, WEBP, or GIF";
 
-const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 2 * 1024 * 1024;
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const VIDEO_TYPE_LABEL = "MP4, WEBM, or MOV";
 

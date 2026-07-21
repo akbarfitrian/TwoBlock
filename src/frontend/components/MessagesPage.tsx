@@ -21,7 +21,7 @@ export function MessagesPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <h1 className="border-b border-surface-border px-4 py-4 font-display text-[20px] font-bold text-ink">Messages</h1>
+      <h1 className="flex h-16 items-center border-b border-surface-border px-4 font-display text-[20px] font-bold text-ink">Messages</h1>
       {loading && threads.length === 0 && <p className="px-4 py-6 text-center text-[14px] text-ink-muted">Loading…</p>}
       {!loading && threads.length === 0 && (
         <p className="px-4 py-6 text-center text-[14px] text-ink-muted">No conversations yet.</p>
