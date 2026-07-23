@@ -17,6 +17,7 @@ export interface TopTippedPost {
   authorUsername: string | null;
   authorWallet: string;
   authorIsOg: boolean;
+  authorTotalPoints: number;
   authorAvatarUrl: string | null;
   totalTipsUsdc: number;
 }
@@ -58,7 +59,7 @@ export function useTopTippedPosts(limit = 5) {
       const { data: postRows } = await supabase
         .from("posts")
         .select(
-          "id, content, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og)"
+          "id, content, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og, total_points)"
         )
         .in("id", postIds);
 
@@ -75,6 +76,7 @@ export function useTopTippedPosts(limit = 5) {
             authorUsername: post.author.username,
             authorLabel: displayName(post.author.username, post.author.wallet_address),
             authorIsOg: post.author.is_og as boolean,
+            authorTotalPoints: (post.author.total_points as number) ?? 0,
             authorAvatarUrl: post.author.avatar_url as string | null,
             totalTipsUsdc: total,
           };

@@ -1,26 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
-import { createPublicClient, http, isAddress, isHash, getAddress, parseEventLogs } from "viem";
-import { activeArcChain } from "@/shared/chain";
-import {
-  twoBlockPaymentsAbi,
-  getTwoBlockPaymentsAddress,
-  OG_PRICE_USDC,
-} from "@/shared/contracts/two-block-payments";
+import { createPublicClient, http, isAddress, isHash, getAddress, parseEventLogs, formatUnits } from "viem";
+import { twoBlockPaymentsAbi, OG_PRICE_USDC } from "@/shared/contracts/two-block-payments";
+import { twoBlockPaymentsErc20Abi, OG_PRICE_USDC_GIWA } from "@/shared/contracts/two-block-payments-erc20";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 import { completeQuestOnce } from "@/shared/quests";
-
-const publicClient = createPublicClient({
-  chain: activeArcChain,
-  transport: http(activeArcChain.rpcUrls.default.http[0]),
-});
+import { awardPoints } from "@/shared/points";
+import { resolveChain } from "@/backend/lib/resolve-chain";
 
 export async function POST(req: NextRequest) {
-  const { wallet, amountUsdc, txRef } = await req.json();
+  const { wallet, amountUsdc, txRef, chainId } = await req.json();
+
+  let chainKey, chainConfig, contractAddress;
+  try {
+    ({ chainKey, config: chainConfig, paymentsContractAddress: contractAddress } = resolveChain(chainId));
+  } catch (err) {
+    console.error("[TwoBlock] Failed to resolve chain for OG purchase:", err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown chain" }, { status: 400 });
+  }
+
+  // Prices happen to be equal (28 USDC) on both chains today, but each
+  // chain validates against its own constant so they can drift
+  // independently without touching this route.
+  const expectedPrice = chainConfig.paymentMode === "erc20" ? OG_PRICE_USDC_GIWA : OG_PRICE_USDC;
 
   if (
     !wallet || !isAddress(wallet) ||
-    typeof amountUsdc !== "number" || Math.abs(amountUsdc - OG_PRICE_USDC) > 1e-9 ||
+    typeof amountUsdc !== "number" || Math.abs(amountUsdc - expectedPrice) > 1e-9 ||
     !isHash(txRef)
   ) {
     return NextResponse.json({ error: "Invalid OG purchase payload" }, { status: 400 });
@@ -28,13 +34,10 @@ export async function POST(req: NextRequest) {
 
   const checksummed = getAddress(wallet);
 
-  let contractAddress;
-  try {
-    contractAddress = getTwoBlockPaymentsAddress();
-  } catch (err) {
-    console.error("[TwoBlock] Payments contract address not configured:", err);
-    return NextResponse.json({ error: "Payments contract is not configured on the server" }, { status: 500 });
-  }
+  const publicClient = createPublicClient({
+    chain: chainConfig.chain,
+    transport: http(chainConfig.chain.rpcUrls.default.http[0]),
+  });
 
   let receipt;
   try {
@@ -48,18 +51,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Transaction was not sent to the TwoBlockPayments contract" }, { status: 400 });
   }
 
-  const [purchaseEvent] = parseEventLogs({
-    abi: twoBlockPaymentsAbi,
-    eventName: "OGPurchased",
-    logs: receipt.logs,
-  });
+  // Both TwoBlockPayments.sol (Arc) and TwoBlockPaymentsERC20.sol (Giwa)
+  // emit an identically-shaped `OGPurchased` event — the address check
+  // above already pins the log to the right contract, this just picks the
+  // right ABI shape to decode it with.
+  const [purchaseEvent] =
+    chainConfig.paymentMode === "erc20"
+      ? parseEventLogs({ abi: twoBlockPaymentsErc20Abi, eventName: "OGPurchased", logs: receipt.logs })
+      : parseEventLogs({ abi: twoBlockPaymentsAbi, eventName: "OGPurchased", logs: receipt.logs });
 
   if (!purchaseEvent) {
     return NextResponse.json({ error: "Transaction did not emit an OGPurchased event" }, { status: 400 });
   }
 
   const { wallet: onChainWallet, amount: onChainAmountWei } = purchaseEvent.args;
-  const onChainAmountUsdc = Number(onChainAmountWei) / 1e18;
+  const onChainAmountUsdc = Number(formatUnits(onChainAmountWei, chainConfig.usdcDecimals));
 
   if (
     getAddress(onChainWallet) !== checksummed ||
@@ -71,12 +77,15 @@ export async function POST(req: NextRequest) {
   const supabase = createSupabaseServerClient();
 
   // og_member_since_block comes straight from the confirmed receipt, so it
-  // can't be backdated by a client-submitted value.
+  // can't be backdated by a client-submitted value. is_og itself is set
+  // globally by purchase_og() regardless of p_chain_id — see
+  // 0019_multichain_support.sql — chain_id here is provenance only.
   const { data: purchase, error: rpcError } = await supabase.rpc("purchase_og", {
     p_wallet_address: checksummed,
     p_amount_usdc: amountUsdc,
     p_tx_ref: txRef,
     p_block_number: Number(receipt.blockNumber),
+    p_chain_id: chainKey,
   });
 
   if (rpcError) {
@@ -85,6 +94,9 @@ export async function POST(req: NextRequest) {
   }
 
   await completeQuestOnce(supabase, checksummed, "get_og");
+  // Deduped by (wallet, event_type, ref_id) via idx_point_events_onetime,
+  // so a retried purchase confirmation can't double-award this bonus.
+  await awardPoints(supabase, checksummed, "og_purchase_bonus", 50, txRef);
 
   waitUntil(
     (async () => {

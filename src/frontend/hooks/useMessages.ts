@@ -7,6 +7,7 @@ export interface MessageThread {
   otherUsername: string | null;
   otherAvatarUrl: string | null;
   otherIsOg: boolean;
+  otherTotalPoints: number;
   lastMessage: string;
   lastMessageAt: string;
   lastMessageFromMe: boolean;

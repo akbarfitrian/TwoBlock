@@ -6,6 +6,10 @@ export interface Profile {
   is_og: boolean;
   og_member_since_block: number | null;
   username_changed_at: string | null;
+  total_points: number;
+  referral_code: string | null;
+  referred_by: string | null;
+  referral_slots_used: number;
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +39,7 @@ export interface Post {
 export interface PostWithAuthor extends Post {
   author: Pick<
     Profile,
-    "wallet_address" | "username" | "avatar_url" | "is_og"
+    "wallet_address" | "username" | "avatar_url" | "is_og" | "total_points"
   >;
   tip_total_usdc: number;
   love_count: number;
@@ -62,6 +66,6 @@ export interface Comment {
 export interface CommentWithAuthor extends Comment {
   author: Pick<
     Profile,
-    "wallet_address" | "username" | "avatar_url" | "is_og"
+    "wallet_address" | "username" | "avatar_url" | "is_og" | "total_points"
   >;
 }

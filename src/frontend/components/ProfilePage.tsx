@@ -67,7 +67,7 @@ export function ProfilePage({ walletAddress: identifier }: { walletAddress: stri
           <div className="min-w-0 flex-1">
             <h2 className="flex items-center gap-1 font-display text-[18px] font-bold text-ink">
               {displayName(profile.username, profile.wallet_address)}
-              <OGBadge isOg={profile.is_og} />
+              <OGBadge isOg={profile.is_og} points={profile.total_points} />
             </h2>
             <span className="font-mono text-[13px] text-ink-muted">{shortenAddress(profile.wallet_address)}</span>
             {profile.is_og && profile.og_member_since_block != null && (

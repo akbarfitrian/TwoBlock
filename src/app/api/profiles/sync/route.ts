@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { ensureReferralCode } from "@/backend/lib/referral-code";
 
 export async function POST(req: NextRequest) {
   const { walletAddress } = await req.json();
@@ -25,6 +26,8 @@ export async function POST(req: NextRequest) {
     console.error("[TwoBlock] Failed to sync profile:", error);
     return NextResponse.json({ error: "Failed to sync profile" }, { status: 500 });
   }
+
+  await ensureReferralCode(supabase, checksummed);
 
   return NextResponse.json({ profile: data });
 }

@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { assignReferralCode } from "@/backend/lib/referral-code";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
+const REFERRAL_CODE_RE = /^[A-Za-z0-9]{8}$/;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const walletAddress = body?.walletAddress;
   const username = body?.username;
+  const referredByCode = body?.referredByCode;
+
+  if (referredByCode !== undefined && referredByCode !== null && !REFERRAL_CODE_RE.test(referredByCode)) {
+    return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+  }
 
   if (!walletAddress || !isAddress(walletAddress)) {
     return NextResponse.json({ error: "Invalid wallet address" }, { status: 400 });
@@ -55,5 +62,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save username." }, { status: 500 });
   }
 
-  return NextResponse.json({ profile: data });
+  const referralCode = await assignReferralCode(supabase, checksummed);
+
+  let referral: { success: boolean; reason: string } | null = null;
+  if (referredByCode) {
+    const { data: referralData, error: referralError } = await supabase.rpc("apply_referral", {
+      p_wallet_address: checksummed,
+      p_referral_code: referredByCode,
+    });
+    if (referralError) {
+      console.error("[TwoBlock] Failed to apply referral at onboarding:", referralError);
+    } else {
+      referral = referralData?.[0] ?? null;
+    }
+  }
+
+  return NextResponse.json({ profile: { ...data, referral_code: referralCode }, referral });
 }

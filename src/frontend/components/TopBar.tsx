@@ -8,6 +8,7 @@ import { useProfile } from "@/frontend/hooks/useProfile";
 import { useNotifications } from "@/frontend/hooks/useNotifications";
 import { useTheme } from "@/frontend/hooks/useTheme";
 import { OGBadge } from "@/frontend/components/OGBadge";
+import { NetworkSelector } from "@/frontend/components/NetworkSelector";
 import {
   BellIcon,
   ChevronDownIcon,
@@ -153,7 +154,7 @@ function SettingsMenu() {
       {open && (
         <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-surface-border bg-surface p-2 shadow-card">
           <Link
-            href="/settings"
+            href="/help"
             className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
             onClick={() => setOpen(false)}
           >
@@ -228,7 +229,7 @@ function AccountMenu() {
         </span>
         <span className="hidden max-w-[140px] items-center gap-1 truncate text-[14px] font-semibold text-ink sm:flex">
           <span className="truncate">{displayName(profile?.username ?? null, walletAddress)}</span>
-          <OGBadge isOg={profile?.is_og ?? false} size={13} />
+          <OGBadge isOg={profile?.is_og ?? false} points={profile?.total_points ?? 0} size={13} />
         </span>
         <ChevronDownIcon size={14} />
       </button>
@@ -305,6 +306,7 @@ export function TopBar() {
       <div className="flex shrink-0 items-center gap-1">
         {ready && authenticated ? (
           <>
+            <NetworkSelector />
             <ComposeButton />
             <NotificationsMenu />
             <SettingsMenu />
@@ -313,6 +315,7 @@ export function TopBar() {
         ) : (
           ready && (
             <>
+              <NetworkSelector />
               <SettingsMenu />
               <button
                 type="button"

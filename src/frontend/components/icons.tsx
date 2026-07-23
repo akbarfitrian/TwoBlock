@@ -695,6 +695,20 @@ export function CheckIcon({ size = 16 }: IconProps) {
   )
 }
 
+export function DropletIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 3s6.5 7.1 6.5 11.5A6.5 6.5 0 015.5 14.5C5.5 10.1 12 3 12 3z"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export function BriefcaseIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -823,6 +837,17 @@ export function CommandIcon({ size = 14 }: IconProps) {
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
+    </svg>
+  )
+}
+
+export function NetworkIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <circle cx="6.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="17.5" cy="7.5" r="3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="18" r="3" stroke="currentColor" strokeWidth="2" />
+      <path d="M9 8.8 15 8.8M8 10.2 11 15.6M16 10.2 13 15.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }

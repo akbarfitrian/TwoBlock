@@ -201,7 +201,7 @@ export function PostCard({ post, onReact, onRepost, onVote, onDelete, clickable 
               </Link>
               {target.author.is_og && (
                 <span className="flex items-center gap-1 rounded-full border border-surface-border bg-surface-soft px-1.5 py-0.5">
-                  <OGBadge isOg size={16} />
+                  <OGBadge isOg points={target.author.total_points} size={16} />
                 </span>
               )}
               <span className="shrink-0 text-[13px] text-ink-faint">{formatRelativeTime(target.created_at)}</span>

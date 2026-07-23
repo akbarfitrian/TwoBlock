@@ -9,6 +9,7 @@ export interface QuestProgress {
   description: string;
   icon: string;
   target: number;
+  points: number;
   progress: number;
   completed: boolean;
   completedAt: string | null;

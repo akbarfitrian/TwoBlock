@@ -10,6 +10,7 @@ export interface SuggestedAccount {
   username: string | null;
   label: string;
   isOg: boolean;
+  totalPoints: number;
   avatarUrl: string | null;
 }
 
@@ -35,7 +36,7 @@ export function useSuggestedAccounts(limit = 5) {
 
     const { data: profileRows } = await supabase
       .from("profiles")
-      .select("wallet_address, username, avatar_url, is_og, created_at")
+      .select("wallet_address, username, avatar_url, is_og, total_points, created_at")
       .order("is_og", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit + excluded.size);
@@ -48,6 +49,7 @@ export function useSuggestedAccounts(limit = 5) {
         username: p.username as string | null,
         label: displayName(p.username, p.wallet_address),
         isOg: p.is_og as boolean,
+        totalPoints: (p.total_points as number) ?? 0,
         avatarUrl: p.avatar_url as string | null,
       }));
 

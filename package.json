@@ -1,6 +1,6 @@
 {
   "name": "twoblock",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
@@ -10,7 +10,8 @@
     "lint": "next lint",
     "contracts:compile": "hardhat compile",
     "contracts:deploy:testnet": "hardhat run contracts/scripts/deploy.ts --network arcTestnet",
-    "contracts:deploy:mainnet": "hardhat run contracts/scripts/deploy.ts --network arcMainnet"
+    "contracts:deploy:mainnet": "hardhat run contracts/scripts/deploy.ts --network arcMainnet",
+    "contracts:deploy:giwa": "hardhat run contracts/scripts/deploy-giwa.ts --network giwaSepolia"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

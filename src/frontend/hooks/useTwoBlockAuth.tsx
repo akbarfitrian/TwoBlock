@@ -9,8 +9,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getAddress, type Address } from "viem";
-import { activeArcChain } from "@/shared/chain";
+import { getAddress, type Address, type Chain } from "viem";
+import { activeArcChain, getChainKeyByChainId } from "@/shared/chain";
+import { useActiveChain } from "@/frontend/hooks/useActiveChain";
 import { createSupabaseBrowserClient } from "@/frontend/lib/supabase-client";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -33,6 +34,12 @@ export interface TwoBlockAuthState {
   logout: () => void;
 
   ensureArcNetwork: () => Promise<void>;
+  /// Same as ensureArcNetwork but targets whichever network is currently
+  /// selected in the network selector (see useActiveChain), not always
+  /// Arc. Prefer this for anything triggered from user action after the
+  /// multi-chain selector landed — ensureArcNetwork is kept only for
+  /// call sites that specifically need Arc regardless of selection.
+  ensureActiveNetwork: () => Promise<void>;
 
   connectModalOpen: boolean;
   closeConnectModal: () => void;
@@ -88,9 +95,11 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
     };
   }, []);
 
-  const ensureArcNetwork = useCallback(async () => {
+  const { activeChain, activeChainKey, setActiveChainKey } = useActiveChain();
+
+  const ensureNetwork = useCallback(async (chain: Chain) => {
     if (typeof window === "undefined" || !window.ethereum) return;
-    const chainIdHex = `0x${activeArcChain.id.toString(16)}`;
+    const chainIdHex = `0x${chain.id.toString(16)}`;
 
     try {
       await window.ethereum.request({
@@ -107,24 +116,55 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
             params: [
               {
                 chainId: chainIdHex,
-                chainName: activeArcChain.name,
-                nativeCurrency: activeArcChain.nativeCurrency,
-                rpcUrls: activeArcChain.rpcUrls.default.http,
-                blockExplorerUrls: activeArcChain.blockExplorers
-                  ? [activeArcChain.blockExplorers.default.url]
+                chainName: chain.name,
+                nativeCurrency: chain.nativeCurrency,
+                rpcUrls: chain.rpcUrls.default.http,
+                blockExplorerUrls: chain.blockExplorers
+                  ? [chain.blockExplorers.default.url]
                   : [],
               },
             ],
           });
         } catch (addErr) {
-          console.warn("[TwoBlock] Failed to add Arc network:", addErr);
+          console.warn(`[TwoBlock] Failed to add ${chain.name} network:`, addErr);
         }
       } else {
 
-        console.warn("[TwoBlock] Failed to auto-switch to Arc network:", err);
+        console.warn(`[TwoBlock] Failed to auto-switch to ${chain.name} network:`, err);
       }
     }
   }, []);
+
+  const ensureArcNetwork = useCallback(async () => {
+    await ensureNetwork(activeArcChain);
+  }, [ensureNetwork]);
+
+  const ensureActiveNetwork = useCallback(async () => {
+    await ensureNetwork(activeChain.chain);
+  }, [ensureNetwork, activeChain]);
+
+  // If the user switches network from inside their wallet extension
+  // directly (instead of TwoBlock's selector), keep the selector's state
+  // in sync so the rest of the app (payment flow branching, explorer
+  // links, etc.) reflects what the wallet is actually connected to.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+    const ethereum = window.ethereum;
+
+    const handleChainChanged = (...args: unknown[]) => {
+      const chainIdHex = args[0] as string;
+      const chainId = parseInt(chainIdHex, 16);
+      const matchedKey = getChainKeyByChainId(chainId);
+      if (matchedKey && matchedKey !== activeChainKey) {
+        setActiveChainKey(matchedKey);
+      }
+    };
+
+    ethereum.on?.("chainChanged", handleChainChanged);
+    return () => {
+      ethereum.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, [activeChainKey, setActiveChainKey]);
 
   const closeConnectModal = useCallback(() => {
     setConnectModalOpen(false);
@@ -145,7 +185,7 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
         method: "eth_requestAccounts",
       })) as string[];
       setWalletAddress(accounts[0] ? normalizeAddress(accounts[0]) : null);
-      await ensureArcNetwork();
+      await ensureActiveNetwork();
       setConnectModalOpen(false);
     } catch (err) {
 
@@ -154,7 +194,7 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
     } finally {
       setConnecting(false);
     }
-  }, [ensureArcNetwork]);
+  }, [ensureActiveNetwork]);
 
   const login = useCallback(async () => {
     setConnectError(null);
@@ -175,6 +215,17 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
       return;
     }
     let cancelled = false;
+
+    // Fire-and-forget: keeps server-side profile bookkeeping (e.g.
+    // assigning a referral_code) in sync every time a wallet connects,
+    // including for wallets that onboarded before this bookkeeping
+    // existed. Deliberately not awaited — it shouldn't block or fail the
+    // username check below.
+    fetch("/api/profiles/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress }),
+    }).catch((err) => console.error("[TwoBlock] Failed to sync profile:", err));
 
     (async () => {
       setCheckingProfile(true);
@@ -238,6 +289,7 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
     login,
     logout,
     ensureArcNetwork,
+    ensureActiveNetwork,
     connectModalOpen,
     closeConnectModal,
     connecting,

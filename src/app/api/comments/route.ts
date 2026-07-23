@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 import { MAX_COMMENT_CHARS } from "@/shared/comment-limits";
+import { completeDailyQuestOnce } from "@/shared/points";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isUUID(value: unknown): value is string {
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("comments")
-    .select("*, author:profiles!comments_author_wallet_fkey(wallet_address, username, avatar_url, is_og)")
+    .select("*, author:profiles!comments_author_wallet_fkey(wallet_address, username, avatar_url, is_og, total_points)")
     .eq("post_id", postId)
     .order("created_at", { ascending: true })
     .limit(500);
@@ -87,13 +88,15 @@ export async function POST(req: NextRequest) {
   const { data: comment, error: insertError } = await supabase
     .from("comments")
     .insert({ post_id: postId, author_wallet: checksummed, content: trimmed })
-    .select("*, author:profiles!comments_author_wallet_fkey(wallet_address, username, avatar_url, is_og)")
+    .select("*, author:profiles!comments_author_wallet_fkey(wallet_address, username, avatar_url, is_og, total_points)")
     .single();
 
   if (insertError) {
     console.error("[TwoBlock] Failed to create comment:", insertError);
     return NextResponse.json({ error: "Failed to post comment" }, { status: 500 });
   }
+
+  await completeDailyQuestOnce(supabase, checksummed, "daily_comment");
 
   const notifiedWallets = new Set<string>([checksummed]);
 

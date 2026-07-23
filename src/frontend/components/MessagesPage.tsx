@@ -47,7 +47,7 @@ export function MessagesPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 truncate font-mono text-[13px] font-semibold text-ink">
               <span className="truncate">{displayName(thread.otherUsername, thread.otherWallet)}</span>
-              <OGBadge isOg={thread.otherIsOg} size={13} />
+              <OGBadge isOg={thread.otherIsOg} points={thread.otherTotalPoints} size={13} />
             </div>
             <div className={`truncate text-[13px] ${thread.unread ? "font-semibold text-ink" : "text-ink-muted"}`}>
               {thread.lastMessageFromMe ? "You: " : ""}
@@ -117,7 +117,7 @@ function ConversationPanel({ myWallet, otherWallet }: { myWallet: string; otherW
           <Link href={profileHref(otherProfile?.username ?? null, otherWallet)} className="font-semibold text-ink hover:underline">
             {displayName(otherProfile?.username ?? null, otherWallet)}
           </Link>
-          {otherProfile && <OGBadge isOg={otherProfile.is_og} />}
+          {otherProfile && <OGBadge isOg={otherProfile.is_og} points={otherProfile.total_points} />}
         </div>
       </header>
 

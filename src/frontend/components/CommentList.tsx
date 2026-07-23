@@ -74,7 +74,7 @@ function CommentRow({ comment, onDelete }: { comment: CommentWithAuthor; onDelet
             >
               {displayName(comment.author.username, comment.author.wallet_address)}
             </Link>
-            {comment.author.is_og && <OGBadge isOg size={14} />}
+            {comment.author.is_og && <OGBadge isOg points={comment.author.total_points} size={14} />}
             <span className="shrink-0 text-[12.5px] text-ink-faint">{formatRelativeTime(comment.created_at)}</span>
           </div>
           {isOwner && (

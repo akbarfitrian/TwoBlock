@@ -75,7 +75,7 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: () 
           {actor ? (
             <b className="font-semibold">
               {displayName(actor.username, actor.wallet_address)}
-              <OGBadge isOg={actor.is_og} />
+              <OGBadge isOg={actor.is_og} points={actor.total_points} />
             </b>
           ) : (
             <b className="font-semibold">TwoBlock</b>

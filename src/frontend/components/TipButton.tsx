@@ -24,6 +24,7 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [amountInput, setAmountInput] = useState("1.00");
+  const [step, setStep] = useState<"approving" | "sending" | null>(null);
 
   const isOwnPost = !!walletAddress && walletAddress.toLowerCase() === toWallet.toLowerCase();
 
@@ -55,7 +56,7 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
     setPending(true);
     setError(null);
     try {
-      await sendTip({ toWallet, amountUsdc: amount, postId });
+      await sendTip({ toWallet, amountUsdc: amount, postId, onStep: setStep });
 
       setTotal((t) => t + amount);
       setModalOpen(false);
@@ -64,8 +65,11 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
       setError(err instanceof Error ? err.message : "Failed to send tip. Try again.");
     } finally {
       setPending(false);
+      setStep(null);
     }
   };
+
+  const submitLabel = step === "approving" ? "Approving…" : pending ? "Sending…" : "Send tip";
 
   if (isOwnPost) {
     return (
@@ -172,7 +176,7 @@ export function TipButton({ postId, toWallet, currentTotal }: TipButtonProps) {
                 className="rounded-full bg-brand-gradient px-5 py-2 text-[14px] font-bold text-accent-contrast shadow-glow transition-transform duration-150 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 disabled={pending}
               >
-                {pending ? "Sending…" : "Send tip"}
+                {submitLabel}
               </button>
             </div>
           </form>

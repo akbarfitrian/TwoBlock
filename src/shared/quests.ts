@@ -1,4 +1,5 @@
 import type { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { awardPoints } from "@/shared/points";
 
 export interface QuestDefinition {
   key: string;
@@ -6,14 +7,18 @@ export interface QuestDefinition {
   description: string;
   icon: string;
   target: number;
+  points: number;
 }
 
 export const QUEST_CATALOG: QuestDefinition[] = [
-  { key: "first_post", title: "First Post", description: "Create your first post on TwoBlock.", icon: "post", target: 1 },
-  { key: "first_tip_sent", title: "First Tip", description: "Send your first tip to another user.", icon: "tip", target: 1 },
-  { key: "get_og", title: "Get OG", description: "Purchase OG lifetime membership.", icon: "og", target: 1 },
-  { key: "streak_7d", title: "7-Day Streak", description: "Post every day, 7 days in a row.", icon: "streak", target: 7 },
-  { key: "og_gate_first_post", title: "Gatekeeper", description: "OG-exclusive: publish your first gated (followers-only) post.", icon: "og", target: 1 },
+  { key: "first_post", title: "First Post", description: "Create your first post on TwoBlock.", icon: "post", target: 1, points: 10 },
+  { key: "first_tip_sent", title: "First Tip", description: "Send your first tip to another user.", icon: "tip", target: 1, points: 10 },
+  { key: "get_og", title: "Get OG", description: "Purchase OG lifetime membership.", icon: "og", target: 1, points: 50 },
+  { key: "streak_7d", title: "7-Day Streak", description: "Post every day, 7 days in a row.", icon: "streak", target: 7, points: 30 },
+  { key: "og_gate_first_post", title: "Gatekeeper", description: "OG-exclusive: publish your first gated (followers-only) post.", icon: "og", target: 1, points: 15 },
+  { key: "first_follow", title: "First Follow", description: "Follow someone for the first time.", icon: "follow", target: 1, points: 5 },
+  { key: "profile_complete", title: "Complete Your Profile", description: "Add an avatar and a bio to your profile.", icon: "profile", target: 1, points: 5 },
+  { key: "streak_30d", title: "30-Day Streak", description: "Post every day, 30 days in a row.", icon: "streak", target: 30, points: 100 },
 ];
 
 type ServerClient = ReturnType<typeof createSupabaseServerClient>;
@@ -42,6 +47,14 @@ export async function setQuestProgress(
     { onConflict: "wallet_address,quest_key" }
   );
   if (error) console.error(`[TwoBlock] Failed to update quest progress ${questKey}:`, error);
+
+  // award_points dedupes one-time quest completions on (wallet, event_type,
+  // ref_id) — see idx_point_events_onetime — so it's safe to call this
+  // every time progress reaches target, even on repeated/retried calls
+  // (e.g. refreshPostingStreak recomputing the streak on every post).
+  if (capped >= def.target) {
+    await awardPoints(supabase, wallet, "quest_completed", def.points, questKey);
+  }
 }
 
 export async function completeQuestOnce(supabase: ServerClient, wallet: string, questKey: string) {
@@ -75,4 +88,5 @@ export async function refreshPostingStreak(supabase: ServerClient, wallet: strin
   }
 
   await setQuestProgress(supabase, wallet, "streak_7d", streak);
+  await setQuestProgress(supabase, wallet, "streak_30d", streak);
 }

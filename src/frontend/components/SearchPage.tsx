@@ -44,7 +44,7 @@ function TrendingPosts() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1 text-[13px] font-semibold text-ink">
                   <span className="truncate">{post.authorLabel}</span>
-                  <OGBadge isOg={post.authorIsOg} size={13} />
+                  <OGBadge isOg={post.authorIsOg} points={post.authorTotalPoints} size={13} />
                 </span>
                 {post.content && (
                   <span className="mt-0.5 block truncate text-[13px] text-ink-muted">{post.content}</span>
@@ -92,7 +92,7 @@ function SuggestedAccounts() {
                 </span>
                 <span className="flex min-w-0 items-center gap-1 text-[13px] font-semibold text-ink">
                   <span className="truncate">{account.label}</span>
-                  <OGBadge isOg={account.isOg} size={13} />
+                  <OGBadge isOg={account.isOg} points={account.totalPoints} size={13} />
                 </span>
               </Link>
               <FollowButton targetWallet={account.wallet} />
@@ -158,7 +158,7 @@ export function SearchPage() {
                       <span className="truncate text-[14px] font-semibold text-ink">
                         {displayName(profile.username, profile.wallet_address)}
                       </span>
-                      <OGBadge isOg={profile.is_og} />
+                      <OGBadge isOg={profile.is_og} points={profile.total_points} />
                     </span>
                     <span className="block truncate font-mono text-[12px] text-ink-muted">{shortenAddress(profile.wallet_address)}</span>
                   </span>

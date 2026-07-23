@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeQuestOnce } from "@/shared/quests";
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 const MAX_BIO_CHARS = 160;
@@ -90,6 +91,10 @@ export async function PATCH(req: NextRequest) {
     }
     console.error("[TwoBlock] Failed to update profile (settings):", error);
     return NextResponse.json({ error: "Failed to save profile changes." }, { status: 500 });
+  }
+
+  if (data.avatar_url && data.bio) {
+    await completeQuestOnce(supabase, checksummed, "profile_complete");
   }
 
   return NextResponse.json({ profile: data });

@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTwoBlockAuth } from "@/frontend/hooks/useTwoBlockAuth";
 import { useProfile } from "@/frontend/hooks/useProfile";
 import { useOG } from "@/frontend/hooks/useOG";
 import { useWalletBalance } from "@/frontend/hooks/useWalletBalance";
+import { useFaucet } from "@/frontend/hooks/useFaucet";
+import { useActiveChain } from "@/frontend/hooks/useActiveChain";
 import { useTipHistory, type TipHistoryItem } from "@/frontend/hooks/useTipHistory";
 import { OGBadge } from "@/frontend/components/OGBadge";
 import { BackButton } from "@/frontend/components/BackButton";
-import { WalletIcon, RefreshIcon, LinkIcon, CheckIcon, CoinIcon } from "@/frontend/components/icons";
+import { WalletIcon, RefreshIcon, LinkIcon, CheckIcon, CoinIcon, DropletIcon } from "@/frontend/components/icons";
 import { getTierLimits } from "@/shared/tier-limits";
 import { OG_PRICE_USDC } from "@/shared/contracts/two-block-payments";
 import { activeArcChain } from "@/shared/chain";
-import { avatarColor, formatRelativeTime, shortenAddress } from "@/frontend/lib/format";
+import { avatarColor, formatDuration, formatRelativeTime, shortenAddress } from "@/frontend/lib/format";
 
 function CopyAddressButton({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
@@ -39,7 +41,7 @@ function CopyAddressButton({ address }: { address: string }) {
 
 function BalanceCard() {
   const { walletAddress } = useTwoBlockAuth();
-  const { balance, loading, error, symbol, refresh } = useWalletBalance();
+  const { balance, loading, error, symbol, chainName, refresh } = useWalletBalance();
 
   if (!walletAddress) return null;
 
@@ -74,14 +76,77 @@ function BalanceCard() {
         </button>
       </div>
       {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
-      <p className="mt-1 text-[12px] text-ink-faint">On {activeArcChain.name}</p>
+      <p className="mt-1 text-[12px] text-ink-faint">On {chainName}</p>
+    </div>
+  );
+}
+
+function FaucetCard() {
+  const { walletAddress } = useTwoBlockAuth();
+  const { activeChain } = useActiveChain();
+  const { refresh: refreshBalance } = useWalletBalance();
+  const { available, claiming, error, cooldownRemaining, faucetAmount, claim, addTokenToWallet } = useFaucet();
+
+  // Local per-second countdown between the hook's 30s on-chain polls, so
+  // the number doesn't just sit still for long stretches.
+  const [tickingRemaining, setTickingRemaining] = useState(cooldownRemaining);
+  useEffect(() => {
+    setTickingRemaining(cooldownRemaining);
+  }, [cooldownRemaining]);
+  useEffect(() => {
+    if (tickingRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setTickingRemaining((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [tickingRemaining > 0]);
+
+  if (!walletAddress || !available) return null;
+
+  const onCooldown = tickingRemaining > 0;
+
+  const handleClaim = async () => {
+    await claim();
+    await refreshBalance();
+  };
+
+  return (
+    <div className="rounded-2xl border border-surface-border bg-surface p-5 shadow-card">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-muted">
+          <DropletIcon size={16} />
+          Faucet — {activeChain.chain.name}
+        </span>
+        <button
+          type="button"
+          onClick={addTokenToWallet}
+          className="rounded-full border border-surface-border px-2.5 py-1 text-[12px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+        >
+          Add USDC to wallet
+        </button>
+      </div>
+
+      <p className="mt-3 text-[13px] text-ink-muted">
+        Claim {faucetAmount ?? "1000"} USDC to try tipping and OG purchases on {activeChain.chain.name}.
+      </p>
+
+      <button
+        type="button"
+        onClick={handleClaim}
+        disabled={claiming || onCooldown}
+        className="mt-3 w-full rounded-full bg-brand-gradient px-4 py-2.5 text-[14px] font-bold text-accent-contrast shadow-glow transition-transform duration-150 hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+      >
+        {claiming ? "Claiming…" : onCooldown ? `Next claim in ${formatDuration(tickingRemaining)}` : "Claim Faucet"}
+      </button>
+
+      {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
     </div>
   );
 }
 
 function OGCard() {
   const { profile, refresh } = useProfile();
-  const { purchasing, error, purchase } = useOG();
+  const { purchasing, step, error, purchase } = useOG();
 
   const isOg = !!profile?.is_og;
   const ogLimits = getTierLimits(true);
@@ -113,7 +178,7 @@ function OGCard() {
     >
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-[16px] font-bold text-ink">
-          OG Membership <OGBadge isOg={isOg} />
+          OG Membership <OGBadge isOg={isOg} points={profile?.total_points ?? 0} />
         </h2>
         {isOg && (
           <span className="rounded-full border border-brand-blue/40 bg-brand-blue/10 px-2.5 py-1 text-[12px] font-semibold text-brand-blue">
@@ -153,7 +218,7 @@ function OGCard() {
             onClick={handleBuy}
             disabled={purchasing}
           >
-            {purchasing ? "Processing…" : `Buy OG — $${OG_PRICE_USDC}`}
+            {purchasing ? (step === "approving" ? "Approving…" : "Processing…") : `Buy OG — $${OG_PRICE_USDC}`}
           </button>
         </>
       )}
@@ -239,6 +304,7 @@ export function WalletPage() {
 
       <div className="flex flex-col gap-4 p-4">
         <BalanceCard />
+        <FaucetCard />
         <OGCard />
 
         <div className="rounded-2xl border border-surface-border bg-surface p-4 shadow-card">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
 import { completeQuestOnce, refreshPostingStreak } from "@/shared/quests";
+import { completeDailyQuestOnce } from "@/shared/points";
 import { getTierLimits } from "@/shared/tier-limits";
 
 export async function POST(req: NextRequest) {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
     }
 
     await completeQuestOnce(supabase, checksummed, "first_post");
+    await completeDailyQuestOnce(supabase, checksummed, "daily_post");
     await refreshPostingStreak(supabase, checksummed);
 
     return NextResponse.json({ postId: data.id });
@@ -206,6 +208,7 @@ export async function POST(req: NextRequest) {
 
   await completeQuestOnce(supabase, checksummed, "first_post");
   if (gated) await completeQuestOnce(supabase, checksummed, "og_gate_first_post");
+  await completeDailyQuestOnce(supabase, checksummed, "daily_post");
   await refreshPostingStreak(supabase, checksummed);
 
   return NextResponse.json({ postId: data.id });

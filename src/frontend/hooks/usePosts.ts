@@ -74,7 +74,7 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
       let query = supabase
         .from("posts")
         .select(
-          "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og)"
+          "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og, total_points)"
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -114,7 +114,7 @@ export function usePosts(options: UsePostsOptions = {}): UsePostsState {
           ? supabase
               .from("posts")
               .select(
-                "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og)"
+                "*, author:profiles!posts_author_wallet_fkey(wallet_address, username, avatar_url, is_og, total_points)"
               )
               .in("id", repostSourceIds)
           : Promise.resolve({ data: [] as (Post & { author: PostWithAuthor["author"] })[] }),

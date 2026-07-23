@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeDailyQuestOnce } from "@/shared/points";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isUUID(value: unknown): value is string {
@@ -29,6 +30,8 @@ export async function POST(req: NextRequest) {
     console.error("[TwoBlock] Failed to save reaction:", error);
     return NextResponse.json({ error: "Failed to save reaction" }, { status: 500 });
   }
+
+  await completeDailyQuestOnce(supabase, checksummed, "daily_react");
 
   if (post && post.author_wallet !== checksummed) {
     await supabase.from("notifications").insert({

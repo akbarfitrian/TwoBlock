@@ -81,7 +81,7 @@ export function ConnectWalletButton() {
         <span className="hidden min-w-0 flex-1 flex-col justify-center text-left leading-tight lg:flex">
           <span className="flex min-w-0 items-center">
             <span className="truncate text-[13.5px] font-bold text-ink">{displayName(profile?.username ?? null, walletAddress)}</span>
-            {profile && <OGBadge isOg={profile.is_og} size={13} />}
+            {profile && <OGBadge isOg={profile.is_og} points={profile.total_points} size={13} />}
           </span>
           {profile?.username && (
             <span className="truncate font-mono text-[11.5px] text-ink-faint">{shortenAddress(walletAddress)}</span>

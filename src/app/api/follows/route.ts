@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAddress, getAddress } from "viem";
 import { createSupabaseServerClient } from "@/backend/lib/supabase-server";
+import { completeQuestOnce } from "@/shared/quests";
 
 function parseWallets(body: { followerWallet?: string; followingWallet?: string }) {
   const { followerWallet, followingWallet } = body;
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
     actor_wallet: wallets.follower,
     type: "follow",
   });
+
+  await completeQuestOnce(supabase, wallets.follower, "first_follow");
 
   return NextResponse.json({ status: "ok" });
 }

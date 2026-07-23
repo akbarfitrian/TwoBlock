@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       description: def.description,
       icon: def.icon,
       target: def.target,
+      points: def.points,
       progress: row?.progress ?? 0,
       completed: !!row?.completed_at,
       completedAt: row?.completed_at ?? null,

@@ -185,7 +185,7 @@ export function CommentComposer({ onSubmit }: CommentComposerProps) {
                   )}
                 </div>
                 <span className="min-w-0 truncate text-[13.5px] font-medium text-ink">@{p.username}</span>
-                {p.is_og && <OGBadge isOg size={14} />}
+                {p.is_og && <OGBadge isOg points={p.total_points} size={14} />}
               </button>
             ))}
           </div>

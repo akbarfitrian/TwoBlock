@@ -17,6 +17,7 @@ export interface NotificationItem {
     username: string | null;
     avatar_url: string | null;
     is_og: boolean;
+    total_points: number;
   } | null;
 }
 

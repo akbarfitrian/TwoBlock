@@ -112,7 +112,7 @@ export function RightPanel() {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1 truncate text-[13px] font-semibold text-ink">
                     <span className="truncate">{entry.label}</span>
-                    <OGBadge isOg={entry.isOg} size={13} />
+                    <OGBadge isOg={entry.isOg} points={entry.totalPoints} size={13} />
                   </span>
                 </span>
               </Link>

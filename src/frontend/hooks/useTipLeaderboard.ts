@@ -20,6 +20,7 @@ export interface LeaderboardEntry {
   username: string | null;
   label: string;
   isOg: boolean;
+  totalPoints: number;
   avatarUrl: string | null;
   totalUsdc: number;
   tipCount: number;
@@ -69,7 +70,7 @@ export function useTipLeaderboard(direction: LeaderboardDirection, period: Leade
 
       const { data: profileRows } = await supabase
         .from("profiles")
-        .select("wallet_address, username, avatar_url, is_og")
+        .select("wallet_address, username, avatar_url, is_og, total_points")
         .in("wallet_address", wallets.length > 0 ? wallets : [""]);
 
       const profileByWallet = new Map((profileRows ?? []).map((p) => [p.wallet_address, p]));
@@ -81,6 +82,7 @@ export function useTipLeaderboard(direction: LeaderboardDirection, period: Leade
           username: p?.username ?? null,
           label: displayName(p?.username ?? null, wallet),
           isOg: p?.is_og ?? false,
+          totalPoints: p?.total_points ?? 0,
           avatarUrl: p?.avatar_url ?? null,
           totalUsdc: total,
           tipCount: counts.get(wallet) ?? 0,
