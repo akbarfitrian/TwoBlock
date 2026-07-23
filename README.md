@@ -1,291 +1,289 @@
-# TwoBlock
+TwoBlock is a decentralized, wallet-native social media platform built on the Arc blockchain. Instead of usernames and passwords, identity on TwoBlock is your crypto wallet. Every post, reaction, and transaction is directly tied to your wallet address.
 
-**TwoBlock** is a decentralized, wallet-native social media platform built on the **Arc** blockchain. Instead of usernames and passwords, identity on TwoBlock *is* your crypto wallet — every post, tip, follow, and reaction is tied directly to an on-chain address. It combines the familiar feel of a modern social feed with Web3-native primitives: smart-contract-routed USDC tipping, on-chain-verified transactions, a lifetime OG membership, and gamified quests — all without requiring a centralized login system.
+Payments are processed through a single smart contract rather than peer-to-peer transfers. Tips and OG membership purchases are both routed through the TwoBlockPayments contract, ensuring transparency and security.
 
-> **Payments go through a contract, not P2P.** Tips and the OG membership purchase are both routed through a single on-chain contract, [`contracts/TwoBlockPayments.sol`](contracts/TwoBlockPayments.sol) — not raw wallet-to-wallet transfers. The contract emits `Tipped`/`OGPurchased` events that the backend verifies against instead of trusting client-submitted amounts/addresses. See [Smart contract](#smart-contract-twoblockpaymentssol) below.
-
-> Built with Next.js 14 (App Router), TypeScript, Supabase (Postgres + Row Level Security), and viem, deployed on Vercel.
+Built with Next.js 14 (App Router), TypeScript, Supabase (Postgres with Row Level Security), and viem, deployed on Vercel.
 
 ---
 
-## Why TwoBlock is a Web3 social app
+## Motivation: Why TwoBlock as a Web3 Social Platform
 
-| Traditional social media | TwoBlock |
+| Traditional Social Media | TwoBlock |
 |---|---|
-| Email/password or OAuth login | **Wallet-based auth** — connect MetaMask (or any EIP-1193 wallet), no accounts or secrets to manage |
-| Likes | On-chain-adjacent **Agree / Disagree** reactions tied to your wallet |
-| "Buy me a coffee" via third-party payment processors | **Native USDC tipping** sent directly wallet-to-wallet on the Arc chain, with transaction hashes recorded and verified on-chain |
-| Paid blue-check subscriptions via credit card | **OG lifetime membership** — a single $28 on-chain USDC payment to a treasury wallet, unlocking higher post quotas, image uploads, polls, post editing, and gated posts, forever |
-| Centralized identity | No email required — your **wallet address is your identity**, with an optional on-chain-linked username |
+| Email/password or OAuth login | Wallet-based authentication. Connect MetaMask or any EIP-1193 compatible wallet with no accounts or secrets to manage |
+| Likes | Agree and Disagree reactions directly tied to your wallet address |
+| Third-party payment processors (Buy me a coffee) | Native USDC tipping sent directly wallet-to-wallet on Arc chain with transaction verification |
+| Paid blue-check subscriptions via credit card | OG lifetime membership with a single $28 USDC on-chain payment to the treasury wallet |
+| Centralized identity management | Wallet address is your identity with optional on-chain-linked username |
 
-Arc is used here specifically because it treats **USDC as its native gas currency**, which means tipping is a plain native transfer — no ERC-20 contracts, no `approve()` calls, no gas token swaps. This keeps the tipping UX as close to a single tap as Web3 currently allows.
-
----
-
-## Core features
-
-- **Wallet-native authentication** — connects to `window.ethereum` directly (MetaMask or any injected wallet), with automatic network switching/adding for the Arc chain. No embedded wallet, no third-party auth provider, no App ID.
-- **Feed & posts** — text posts, image attachments, and reposts, with per-tier daily quotas and character limits.
-- **On-chain polls** — OG members can attach polls to posts; votes are open to everyone.
-- **USDC tipping** — send USDC to another wallet from a post via the `TwoBlockPayments` contract's `tip()` function; the backend verifies the tx by decoding the contract's `Tipped` event before marking it confirmed.
-- **OG membership** — a single lifetime $28 purchase via `purchaseOG()` on the same contract, which forwards USDC to the treasury wallet. OG unlocks a larger post quota, longer posts, image attachments, post editing (5-minute window), poll creation, gated (followers-only) posts, and member analytics.
-- **Follows & profiles** — follow/unfollow, public profile pages per wallet, editable bio/avatar/username with a cooldown on username changes.
-- **Reactions** — Agree/Disagree reactions on posts, feeding into notifications and quest progress.
-- **Direct messages** — wallet-to-wallet messaging.
-- **Notifications** — follows, reposts, tips, reactions, and poll results.
-- **Quests** — lightweight gamification (first post, first tip sent, get OG, 7-day posting streak, plus an OG-exclusive "Gatekeeper" quest) to drive onboarding and engagement.
-- **Leaderboard** — top-tipped posts panel, surfacing the most-rewarded content.
+Arc is used because USDC is its native gas currency. This means tipping is a plain native transfer without ERC-20 contract interactions, approval calls, or gas token swaps.
 
 ---
 
-## Tech stack
+## Core Features
 
-- **Framework:** [Next.js 14](https://nextjs.org/) (App Router, TypeScript, Server Components + API Routes)
-- **Blockchain layer:** [viem](https://viem.sh/) for chain definition, wallet client, native USDC transfers, and transaction receipt verification
-- **Chain:** [Arc](https://arc.network) — Circle's USDC-native EVM chain (currently targeting testnet; mainnet not yet publicly released)
-- **Wallet:** Direct browser wallet integration via the EIP-1193 `window.ethereum` provider (MetaMask and compatible wallets) — no third-party wallet/auth SDK
-- **Database:** [Supabase](https://supabase.com/) (Postgres) with Row Level Security enabled on every table
-- **Storage:** Supabase Storage buckets for avatars and post images
-- **Styling:** Tailwind CSS
-- **Hosting:** [Vercel](https://vercel.com/)
+- Wallet-native authentication connecting to window.ethereum directly via MetaMask or compatible wallets, with automatic network switching and chain addition for Arc
+- Feed and posts with text content, image attachments, and reposts, subject to per-tier daily quotas and character limits
+- On-chain polls where OG members can attach polls to posts with voting open to all users
+- USDC tipping functionality enabling direct wallet-to-wallet transfers via the TwoBlockPayments contract tip function with backend transaction verification
+- OG lifetime membership with a single $28 USDC purchase via the purchaseOG function, forwarding funds to the treasury wallet
+- Follow and unfollow functionality with public profile pages per wallet and editable bio, avatar, and username with username change cooldown
+- Agree and Disagree reactions on posts that feed into notifications and quest progress
+- Direct wallet-to-wallet messaging capability
+- Comprehensive notifications for follows, reposts, tips, reactions, and poll results
+- Quest system with lightweight gamification including first post, first tip sent, OG acquisition, 7-day posting streak, and exclusive OG Gatekeeper quests
+- Leaderboard displaying top-tipped posts and most-rewarded content
 
 ---
 
-## Smart contract (`TwoBlockPayments.sol`)
+## Technology Stack
 
-Both payment flows — tips and the OG membership purchase — go through a single deployed contract instead of a raw P2P native transfer:
+- Framework: Next.js 14 with App Router, TypeScript, Server Components, and API Routes
+- Blockchain Layer: viem for chain definition, wallet client integration, native USDC transfers, and transaction receipt verification
+- Blockchain Network: Arc, Circle's USDC-native EVM chain (currently targeting testnet)
+- Wallet Integration: Direct browser wallet integration via EIP-1193 window.ethereum provider supporting MetaMask and compatible wallets
+- Database: Supabase with PostgreSQL backend and Row Level Security enabled on all tables
+- File Storage: Supabase Storage for avatar and post image management
+- Styling: Tailwind CSS for responsive design
+- Deployment: Vercel for hosting and deployment
+
+---
+
+## Language Composition
+
+The project utilizes multiple programming languages:
+- TypeScript: 89.2 percent - Core framework and application logic
+- PLpgSQL: 6.4 percent - Database migrations and stored procedures
+- Solidity: 3.3 percent - Smart contract implementation
+- Other: 1.1 percent - Configuration and miscellaneous files
+
+---
+
+## Smart Contract Architecture (TwoBlockPayments.sol)
+
+Both payment flows, tips and OG membership purchases, are processed through a single deployed smart contract instead of raw peer-to-peer transfers.
 
 ```
 contracts/
-├── TwoBlockPayments.sol   # the contract
-└── scripts/deploy.ts      # hardhat deploy script
-hardhat.config.ts          # compiles contracts/, targets Arc testnet/mainnet
+├── TwoBlockPayments.sol       # Primary smart contract
+└── scripts/deploy.ts          # Hardhat deployment script
+hardhat.config.ts              # Contract compilation targeting Arc testnet and mainnet
 ```
 
-**Why route through a contract instead of P2P:**
-- The contract emits `Tipped(from, to, amount, postId)` and `OGPurchased(wallet, amount)` events. The backend (`api/tips`, `api/og/purchase`) decodes these directly from the transaction receipt and rejects the request if they don't match what the client submitted, instead of trusting client-supplied `to`/`amount` values against a raw transfer's `to`/`value`. The receipt's block number also becomes `og_member_since_block`, so it can't be backdated.
-- OG funds always land wherever the contract's `treasury` currently points, which the contract owner can update with `setTreasury()` — no need to change the frontend or redeploy to rotate treasury wallets.
-- If a recipient can't accept a push transfer (e.g. a contract wallet with no payable fallback), funds are held in `pendingWithdrawals` instead of reverting the sender's transaction or getting stuck; the recipient calls `withdraw()` to pull them out.
+Contract routing ensures transaction transparency through event emission and treasury wallet flexibility for fund forwarding.
 
-**Functions:**
-| Function | Called from | Effect |
+Core Functions:
+
+| Function | Called From | Purpose |
 |---|---|---|
-| `tip(address to, string postId)` (payable) | `src/backend/lib/send-tip.ts` | Forwards `msg.value` to `to`, emits `Tipped` |
-| `purchaseOG()` (payable, fixed `OG_PRICE` = 28 USDC) | `src/frontend/hooks/useOG.ts` | Forwards `msg.value` to `treasury`, sets `isOG[msg.sender] = true`, emits `OGPurchased` |
-| `withdraw()` | anyone with a pending balance | Pulls out escrowed funds from a failed forward |
-| `setTreasury(address)` | contract owner only | Updates where OG payments are forwarded |
-
-**Deploying:**
-```bash
-npm install
-# set DEPLOYER_PRIVATE_KEY and NEXT_PUBLIC_OG_TREASURY_WALLET in .env.local
-npm run contracts:deploy:testnet
-# copy the printed address into NEXT_PUBLIC_PAYMENTS_CONTRACT_ADDRESS in .env.local
-```
-
-If the ABI ever changes, keep `src/shared/contracts/two-block-payments.ts` (the frontend/backend's copy of the ABI) in sync with `contracts/TwoBlockPayments.sol`.
+| tip(address to, string postId) | src/backend/lib/send-tip.ts | Forwards msg.value to recipient and emits Tipped event |
+| purchaseOG() | src/frontend/hooks/useOG.ts | Forwards msg.value to treasury and sets OG status |
+| withdraw() | User initiated | Recovers escrowed funds from failed transfers |
+| setTreasury(address) | Contract owner | Updates treasury wallet address for OG payments |
 
 ---
 
-## Project structure
+## Project Structure
 
-The codebase is split into `frontend/`, `backend/`, and `shared/` under `src/`. `src/app/` stays at the top level because Next.js's App Router requires it there for file-system routing — but within it, `app/api/**` is the backend's HTTP surface and everything else under `app/` is frontend routing (pages that render the components below).
+The codebase is organized into frontend, backend, and shared modules under src/. The src/app/ directory remains at the top level to comply with Next.js App Router requirements.
 
 ```
 twoblock/
 ├── src/
-│   ├── app/                                   # Next.js App Router (routing only — both frontend pages and backend API routes)
-│   │   ├── api/                                # Backend: HTTP routes, all using the Supabase service-role client
-│   │   │   ├── profiles/onboard/route.ts        # Creates a profile on first wallet connect (username required)
-│   │   │   ├── profiles/settings/route.ts       # Update bio/avatar/username
-│   │   │   ├── profiles/sync/route.ts           # Sync/refresh profile state
-│   │   │   ├── tips/route.ts                    # Records a tip and verifies the on-chain transaction
-│   │   │   ├── posts/route.ts                   # Create text/poll posts and reposts (quota + limits, gated posts)
-│   │   │   ├── posts/[id]/route.ts              # Edit a post (OG only, 5-minute window)
-│   │   │   ├── posts/[id]/vote/route.ts         # Vote on a poll (final; open to everyone)
-│   │   │   ├── follows/route.ts                 # Follow (POST) / unfollow (DELETE)
-│   │   │   ├── reactions/route.ts               # Set (POST) / remove (DELETE) Agree/Disagree reactions
-│   │   │   ├── messages/route.ts                # Direct messages
-│   │   │   ├── notifications/route.ts           # Notifications feed
-│   │   │   ├── quests/route.ts                  # Quest progress
-│   │   │   ├── analytics/route.ts               # OG-only: tip totals & follower growth
-│   │   │   └── og/purchase/route.ts             # Records the OG lifetime-membership purchase
-│   │   ├── profile/[wallet]/page.tsx            # Frontend: public profile page for any wallet
-│   │   ├── messages/                            # Direct message inbox and threads
-│   │   ├── notifications/page.tsx
-│   │   ├── quests/page.tsx
-│   │   ├── search/page.tsx
-│   │   ├── settings/page.tsx
-│   │   ├── og/page.tsx                          # "Get OG" purchase flow
-│   │   ├── layout.tsx                           # Root layout — three-column shell (Sidebar / main / RightPanel)
-│   │   ├── page.tsx                             # Home feed
-│   │   └── providers.tsx                        # Global provider mount point
+│   ├── app/                                   # Next.js App Router
+│   │   ├── api/                                # Backend HTTP routes
+│   │   │   ├── profiles/onboard/route.ts       # Profile creation on first wallet connection
+│   │   │   ├── profiles/settings/route.ts      # Profile updates
+│   │   │   ├── tips/route.ts                   # Tip recording and verification
+│   │   │   ├── posts/route.ts                  # Post creation with quota enforcement
+│   │   │   ├── posts/[id]/route.ts             # Post editing functionality
+│   │   │   ├── posts/[id]/vote/route.ts        # Poll voting
+│   │   │   ├── follows/route.ts                # Follow and unfollow operations
+│   │   │   ├── reactions/route.ts              # Agree/Disagree reaction management
+│   │   │   ├── messages/route.ts               # Direct messaging
+│   │   │   ├── notifications/route.ts          # Notification feed
+│   │   │   ├── quests/route.ts                 # Quest progress tracking
+│   │   │   └── og/purchase/route.ts            # OG membership purchase recording
+│   │   ├── profile/[wallet]/page.tsx           # Public wallet profile pages
+│   │   ├── messages/                           # Direct message interface
+│   │   ├── notifications/page.tsx              # Notification display
+│   │   ├── quests/page.tsx                     # Quest interface
+│   │   ├── search/page.tsx                     # Search functionality
+│   │   ├── settings/page.tsx                   # User settings
+│   │   ├── og/page.tsx                         # OG membership purchase flow
+│   │   ├── layout.tsx                          # Root layout
+│   │   ├── page.tsx                            # Home feed
+│   │   └── providers.tsx                       # Global provider configuration
 │   │
-│   ├── frontend/                              # Everything that only ever runs in the browser
-│   │   ├── components/                          # UI components (Feed, PostCard, PostComposer, modals, etc.)
-│   │   ├── hooks/                                # Client hooks (auth, posts, follows, messages, quests, etc.)
-│   │   └── lib/
-│   │       ├── supabase-client.ts                # Browser Supabase client (anon key)
-│   │       ├── format.ts                         # Formatting helpers
-│   │       ├── linkify.tsx                       # Turns URLs/@mentions in post text into links
-│   │       └── upload.ts                         # Avatar/post-image upload to Supabase Storage
+│   ├── frontend/                              # Client-side only modules
+│   │   ├── components/                         # React UI components
+│   │   ├── hooks/                              # Custom React hooks
+│   │   └── lib/                                # Frontend utilities
 │   │
-│   ├── backend/                               # Everything that only ever runs on the server
-│   │   └── lib/
-│   │       ├── supabase-server.ts                # Server Supabase client (service role key — bypasses RLS)
-│   │       ├── send-tip.ts                       # Calls TwoBlockPayments.tip() via viem WalletClient
-│   │       └── og-treasury.ts                    # (deprecated) treasury wallet resolution — see contract's treasury()
+│   ├── backend/                               # Server-side only modules
+│   │   └── lib/                                # Backend utilities
 │   │
-│   ├── shared/                                # Used by both frontend and backend
-│   │   ├── types.ts                              # Domain types (Profile, Post, PostWithAuthor, ...)
-│   │   ├── tier-limits.ts                        # Free/OG quotas & limits (client cache + server-enforced source)
-│   │   ├── quests.ts                             # Quest catalog + progress helpers
-│   │   ├── chain.ts                              # Arc chain definitions (testnet + mainnet placeholder)
-│   │   └── contracts/
-│   │       └── two-block-payments.ts             # Contract ABI, address getter, OG price constant
+│   ├── shared/                                # Shared frontend and backend modules
+│   │   ├── types.ts                            # Type definitions
+│   │   ├── tier-limits.ts                      # Tier-based quotas and limits
+│   │   ├── quests.ts                           # Quest definitions
+│   │   ├── chain.ts                            # Chain configuration
+│   │   └── contracts/                          # Contract ABIs and utilities
 │   │
-│   └── types/
-│       └── ethereum.d.ts                      # Ambient `window.ethereum` (EIP-1193) type declarations
+│   └── types/                                 # TypeScript type declarations
 │
-├── contracts/                                 # TwoBlockPayments.sol + hardhat deploy script
-├── supabase/migrations/                       # Ordered SQL migrations (0001 → 0010)
-├── public/                                    # Static assets (logo, icons)
-├── .env.example
-├── hardhat.config.ts                          # Compiles/deploys contracts/ to Arc
-├── next.config.js
-├── tailwind.config.js
-├── tsconfig.json
-├── package.json
-└── vercel.json
+├── contracts/                                 # Solidity smart contracts
+├── supabase/migrations/                       # Database migrations
+├── public/                                    # Static assets
+├── .env.example                               # Environment template
+├── hardhat.config.ts                          # Hardhat configuration
+├── next.config.js                             # Next.js configuration
+├── tailwind.config.js                         # Tailwind CSS configuration
+├── tsconfig.json                              # TypeScript configuration
+├── package.json                               # Dependencies
+└── vercel.json                                # Vercel configuration
 ```
 
-**Import alias:** `@/*` maps to `src/*`, so imports read as `@/frontend/components/...`, `@/backend/lib/...`, or `@/shared/...`.
+Import Alias: @/* maps to src/* enabling clean import paths throughout the codebase.
 
 ---
 
-## Getting started
+## Getting Started
 
-### 1. Install dependencies
+### Prerequisites
+
+Node.js 18 or higher and npm or yarn package manager.
+
+### Installation and Setup
+
+1. Clone the repository and install dependencies:
 
 ```bash
+git clone https://github.com/akbarfitrian/TwoBlock.git
+cd twoblock
 npm install
 ```
 
-The project depends on two Web3/backend libraries used directly in the codebase:
-
-- **`viem`** — Arc chain definition, transaction sending via a `WalletClient` wrapped around `window.ethereum`, address/unit helpers (`parseUnits`, `isAddress`, ...), and `waitForTransactionReceipt`.
-- **`@supabase/supabase-js`** — browser client (anon key) and server client (service role key).
-
-There is no third-party wallet SDK — wallet connection goes straight to MetaMask (or any other injected wallet) via `window.ethereum` (EIP-1193). See `src/frontend/hooks/useTwoBlockAuth.tsx` and `src/backend/lib/send-tip.ts`.
-
-### 2. Configure environment variables
+2. Configure environment variables:
 
 ```bash
 cp .env.example .env.local
 ```
 
+Complete the following environment variables:
+
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_ARC_NETWORK` | `testnet` or `mainnet`. Stay on `testnet` until Arc's official mainnet chain ID and RPC are confirmed. |
-| `NEXT_PUBLIC_ARC_RPC_URL` | Optional dedicated RPC endpoint for the Arc testnet, used instead of the shared public RPC. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key — **server-only, never expose to the client.** |
-| `NEXT_PUBLIC_OG_TREASURY_WALLET` | Arc wallet address that receives OG membership payments. |
+| NEXT_PUBLIC_ARC_NETWORK | Network selection: testnet or mainnet |
+| NEXT_PUBLIC_ARC_RPC_URL | Optional dedicated RPC endpoint for Arc testnet |
+| NEXT_PUBLIC_SUPABASE_URL | Supabase project URL |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase anonymous key for client-side operations |
+| SUPABASE_SERVICE_ROLE_KEY | Supabase service role key for server-side operations (keep confidential) |
+| NEXT_PUBLIC_OG_TREASURY_WALLET | Arc wallet address designated to receive OG membership payments |
 
-### 3. Run locally
+3. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you'll see a **Connect Wallet** button.
+Access the application at http://localhost:3000 where you will see a Connect Wallet button.
 
-### 4. Set up Supabase
+### Database Configuration
 
-1. Create a new project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. Run the migrations in order. Two options:
+1. Create a new Supabase project at supabase.com/dashboard
 
-   **Supabase CLI (recommended):**
-   ```bash
-   npm install -g supabase
-   supabase login
-   supabase link --project-ref <your-project-ref>
-   supabase db push
-   ```
+2. Apply database migrations:
 
-   **Manual, via the SQL Editor:** run each file in `supabase/migrations/` in order, `0001` through `0010`, one at a time. **Do not skip `0005_storage_buckets.sql`** — it creates the `avatars` and `post-images` Storage buckets; without it, avatar/image uploads fail with a "Bucket not found" error.
+Using Supabase CLI (recommended):
+```bash
+npm install -g supabase
+supabase login
+supabase link --project-ref your-project-ref
+supabase db push
+```
 
-3. Grab your credentials from **Project Settings → API**:
-   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+Or manually execute migration files from supabase/migrations/ in sequential order via the Supabase SQL Editor.
 
-#### Why the data layer is structured this way
+3. Retrieve and store credentials from Project Settings → API:
+   - Project URL for NEXT_PUBLIC_SUPABASE_URL
+   - Anon public key for NEXT_PUBLIC_SUPABASE_ANON_KEY
+   - Service role key for SUPABASE_SERVICE_ROLE_KEY
 
-- **Row Level Security is enabled on every table** (`0003_rls_policies.sql`). Because TwoBlock's identity is a wallet address from MetaMask rather than Supabase Auth, wallets are not mapped to `auth.uid()`. As a result:
-  - Public tables (`profiles`, `posts`, `tips`, `follows`, `post_reactions`, `poll_votes`) can be **read directly from the browser** using the anon key (`src/frontend/lib/supabase-client.ts`) — fast, with no API route round-trip.
-  - All **writes**, plus private tables (`messages`, `notifications`, `quests`), go through API routes using the service role key (`src/backend/lib/supabase-server.ts`), which bypasses RLS entirely.
-  - For more granular RLS (e.g. a user reading only their own DMs directly from the browser), a custom JWT flow would be needed: the backend asks the user to sign a message via `personal_sign`, verifies the signature, then issues a Supabase token carrying a `wallet_address` claim used in a policy like `USING (wallet_address = auth.jwt() ->> 'wallet_address')`. This is not implemented yet — routing all writes through the service role is a reasonable starting point.
+### Production Deployment
 
-- **`src/app/api/tips/route.ts`** uses Next.js's `after()` so that on-chain transaction verification (`waitForTransactionReceipt`) keeps running to completion even after the response has already been sent — on Vercel, a serverless function can otherwise be torn down as soon as the response is flushed if the promise isn't awaited.
+1. Import the repository at vercel.com/new
 
-### 5. Wallet connection (MetaMask)
+2. Select Next.js as the framework (auto-detected)
 
-There's no dashboard to configure for the wallet side — `useTwoBlockAuth` talks directly to `window.ethereum` (the standard EIP-1193 interface) injected by the user's wallet extension:
+3. Configure environment variables in Project Settings for both Production and Preview environments
 
-- `login()` calls `eth_requestAccounts`, then automatically attempts to switch to the Arc network via `wallet_switchEthereumChain` (falling back to `wallet_addEthereumChain` if the wallet doesn't know the chain yet).
-- If no wallet is detected at all, `login()` opens the MetaMask install page in a new tab.
-- There is no embedded wallet — users without a wallet extension cannot log in. If onboarding non-crypto-native users is a goal, consider adding a separate provider (e.g. Privy, Dynamic) specifically for that path.
-
-### 6. Deploy to Vercel
-
-1. Import the repository at [vercel.com/new](https://vercel.com/new).
-2. Framework preset: Next.js (auto-detected).
-3. Add the environment variables (Project Settings → Environment Variables) — matching `.env.example` — for both **Production** and **Preview**.
-4. `vercel.json` already extends the `maxDuration` of the `/api/tips` route to 30 seconds (needed by `after()` above). If your plan enforces a stricter function duration limit, check the current limits in the Vercel dashboard, or move transaction verification to a scheduled Supabase Edge Function (`pg_cron`) instead of running it inline in the API route.
-5. Deploy.
+4. Deploy the application
 
 ---
 
-## OG membership
+## OG Membership System
 
-OG is a single lifetime membership — $28 in USDC, paid once, no renewal, no expiry — purchased on-chain via `purchaseOG()` and sent to the TwoBlock treasury wallet:
+OG represents a single lifetime membership purchased with a one-time $28 USDC payment processed on-chain through the purchaseOG function with no subscription renewal or expiration.
 
-| Tier | Daily posts | Max characters | Image uploads | Edit posts | Create polls | Gate posts |
+Tier Comparison:
+
+| Tier | Daily Post Limit | Maximum Characters | Image Upload | Post Editing | Poll Creation | Post Gating |
 |---|---|---|---|---|---|---|
-| Free | 5 | 250 | ✅ | — | ✅ | — |
-| OG | 20 | 10,000 | ✅ | ✅ (5 min) | ✅ | ✅ |
+| Free | 5 posts | 250 characters | Available | Not available | Available | Not available |
+| OG | 20 posts | 10,000 characters | Available | Available (5 minute window) | Available | Available |
 
-Pricing and benefits live in the `og_pricing` table (`supabase/migrations/0010_og_membership.sql`), enforced server-side on every write — the client-side `tier-limits.ts` cache exists purely for instant UI feedback. A wallet's membership timestamp is recorded as `og_member_since_block` — the block number of the confirmed `purchaseOG()` transaction, so it can't be backdated.
+### Platform Fee Structure
 
-### Tip platform fee
+A platform fee is deducted from each tip and forwarded to the treasury alongside OG membership payments:
 
-Every tip sent through `tip()` now has a platform fee taken off the top and forwarded to `treasury`, alongside the OG membership payment:
-
-| Sender tier | Fee |
+| Sender Tier | Platform Fee |
 |---|---|
-| Free | 5% |
-| OG | 2% |
+| Free tier user | 5 percent |
+| OG member | 2 percent |
 
-The fee is computed on-chain (`FREE_TIP_FEE_BPS` / `OG_TIP_FEE_BPS` in `TwoBlockPayments.sol`) based on the sender's `isOG` status at send time, not the recipient's. The `Tipped` event now emits `fee` alongside `amount`, so `api/tips` can decode and store both — `amount_usdc` stays the gross amount the sender paid, `fee_usdc`/`net_amount_usdc` are the split (see `supabase/migrations/0011_tip_fees.sql`). The frontend tip modal (`TipButton.tsx`) shows the fee and net amount before the sender signs, using `splitTipAmount()` from `shared/contracts/two-block-payments.ts`.
-
----
-
-## Why tips are a native transfer, not a smart contract
-
-Arc uses USDC as the chain's **native gas currency** (18 decimals), rather than as an ERC-20 token like on most other EVM chains. That means sending a tip is a plain `sendTransaction({ to, value })` — no `approve()` step, and no token contract to deploy or interact with.
+The fee is calculated on-chain based on the sender's OG status at the time of transfer. The Tipped event includes fee information for verification.
 
 ---
 
-## Known limitations / roadmap
+## Technical Architecture Notes
 
-- Arc's official **mainnet** chain ID and RPC have not been publicly released yet; `arcMainnet` in `src/shared/chain.ts` is a placeholder. Do not set `NEXT_PUBLIC_ARC_NETWORK=mainnet` until those values are confirmed on Arc's official documentation.
-- Granular, per-user RLS for private tables (e.g. direct messages readable straight from the browser) is not yet implemented — see the note on custom JWTs above.
-- `public/logo-twoblock.svg` is a placeholder and can be swapped for final brand assets.
+### Why Tips Use Native Transfers
+
+Arc implements USDC as its native gas currency with 18 decimal places rather than as a standard ERC-20 token. This architectural choice enables tips to function as plain value transfers without requiring ERC-20 contract interactions or gas token management.
+
+### Data Layer Architecture
+
+Row Level Security is enabled on all database tables providing security without reliance on Supabase Auth.
+
+Public tables including profiles, posts, tips, follows, post reactions, and poll votes are directly readable from the browser using the anonymous key.
+
+All write operations and private tables including messages, notifications, and quests are processed through API routes using the service role key, which bypasses RLS restrictions on the server.
+
+---
+
+## Known Limitations
+
+- Arc's official mainnet chain ID and RPC endpoint have not been publicly released. Do not configure NEXT_PUBLIC_ARC_NETWORK=mainnet until official specifications are available.
+- Per-user Row Level Security for private tables enabling direct browser access to direct messages is not yet implemented.
+- Logo assets in public/logo-twoblock.svg are placeholder files suitable for replacement with final brand materials.
+
+---
+
+## Development Commands
+
+```bash
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Run ESLint checks
+npm run contracts:compile # Compile Solidity contracts
+npm run contracts:deploy:testnet  # Deploy to Arc testnet
+npm run contracts:deploy:mainnet  # Deploy to Arc mainnet
+```
 
 ---
 
 ## License
 
-This project is licensed under the MIT License — see [`LICENSE`](./LICENSE) for details.
+This project is licensed under the MIT License. See LICENSE file for complete license text.
