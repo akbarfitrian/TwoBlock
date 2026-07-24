@@ -161,15 +161,14 @@ function SettingsMenu() {
             <HelpIcon size={16} />
             Help
           </Link>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/docs"
             className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[14px] font-semibold text-ink-muted transition-colors hover:bg-surface-hover hover:text-ink"
+            onClick={() => setOpen(false)}
           >
             <DocsIcon size={16} />
             Docs
-          </a>
+          </Link>
 
           <div className="mt-1 flex items-center justify-between gap-2 border-t border-surface-border px-2.5 pt-2">
             <span className="text-[14px] font-semibold text-ink-muted">Theme</span>
