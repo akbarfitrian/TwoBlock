@@ -10,7 +10,12 @@ import {
   type ReactNode,
 } from "react";
 import { getAddress, type Address, type Chain } from "viem";
-import { activeArcChain, getChainKeyByChainId } from "@/shared/chain";
+import {
+  activeArcChain,
+  CHAIN_REGISTRY,
+  getChainKeyByChainId,
+  type TwoBlockChainKey,
+} from "@/shared/chain";
 import { useActiveChain } from "@/frontend/hooks/useActiveChain";
 import { createSupabaseBrowserClient } from "@/frontend/lib/supabase-client";
 
@@ -40,6 +45,15 @@ export interface TwoBlockAuthState {
   /// multi-chain selector landed — ensureArcNetwork is kept only for
   /// call sites that specifically need Arc regardless of selection.
   ensureActiveNetwork: () => Promise<void>;
+
+  /// Same idea as ensureActiveNetwork, but takes the target chain key as an
+  /// explicit argument instead of reading it from useActiveChain's context.
+  /// Needed for call sites (like NetworkSelector) that call this in the
+  /// same handler as setActiveChainKey(key) — the context value there is
+  /// still the *previous* selection until the next render, so relying on
+  /// ensureActiveNetwork()'s closure would switch/add the wallet to the
+  /// chain the user is navigating away from, not the one they just picked.
+  ensureNetworkForKey: (key: TwoBlockChainKey) => Promise<void>;
 
   connectModalOpen: boolean;
   closeConnectModal: () => void;
@@ -142,6 +156,16 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
   const ensureActiveNetwork = useCallback(async () => {
     await ensureNetwork(activeChain.chain);
   }, [ensureNetwork, activeChain]);
+
+  // Reads straight from CHAIN_REGISTRY by key instead of the activeChain
+  // context value, so it always targets exactly the chain the caller passed
+  // in — not whatever the context still says a render behind.
+  const ensureNetworkForKey = useCallback(
+    async (key: TwoBlockChainKey) => {
+      await ensureNetwork(CHAIN_REGISTRY[key].chain);
+    },
+    [ensureNetwork]
+  );
 
   // If the user switches network from inside their wallet extension
   // directly (instead of TwoBlock's selector), keep the selector's state
@@ -290,6 +314,7 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
     logout,
     ensureArcNetwork,
     ensureActiveNetwork,
+    ensureNetworkForKey,
     connectModalOpen,
     closeConnectModal,
     connecting,

@@ -30,7 +30,7 @@ const SHORT_LABEL: Record<TwoBlockChainKey, string> = {
 
 export function NetworkSelector() {
   const { activeChainKey, setActiveChainKey } = useActiveChain();
-  const { authenticated, ensureActiveNetwork } = useTwoBlockAuth();
+  const { authenticated, ensureNetworkForKey } = useTwoBlockAuth();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const ref = useClickOutside(() => setOpen(false));
@@ -46,10 +46,17 @@ export function NetworkSelector() {
     // If a wallet is already connected, follow through by asking it to
     // actually switch/add the new network too — otherwise the selector
     // and the wallet's real connected chain would silently drift apart.
+    //
+    // Pass `key` explicitly (ensureNetworkForKey) rather than calling
+    // ensureActiveNetwork(): that alternative reads activeChain from
+    // context, which is still the *previous* selection right after
+    // setActiveChainKey(key) above (state hasn't re-rendered yet), so it
+    // would end up switching/adding the network the user is leaving, not
+    // the one — e.g. Giwa — they just picked.
     if (authenticated) {
       setSwitching(true);
       try {
-        await ensureActiveNetwork();
+        await ensureNetworkForKey(key);
       } finally {
         setSwitching(false);
       }
