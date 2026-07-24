@@ -209,8 +209,18 @@ function useTwoBlockAuthState(): TwoBlockAuthState {
         method: "eth_requestAccounts",
       })) as string[];
       setWalletAddress(accounts[0] ? normalizeAddress(accounts[0]) : null);
-      await ensureActiveNetwork();
+
+      // Close the connect modal as soon as the wallet itself is confirmed —
+      // don't keep it mounted/open while we wait on the network switch/add
+      // prompt below. If it stayed open through that await, it could still
+      // be sitting in the DOM (and occasionally repaint on top) at the same
+      // time the onboarding username modal appears right after, which reads
+      // as the connect modal repeatedly popping back up during onboarding.
+      // Network setup is a secondary step now — let it run in the
+      // background instead of gating the modal on it. ensureNetwork()
+      // already swallows its own errors internally, so this can't throw.
       setConnectModalOpen(false);
+      void ensureActiveNetwork();
     } catch (err) {
 
       console.warn("[TwoBlock] Failed to connect wallet:", err);

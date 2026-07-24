@@ -7,12 +7,12 @@ import { shortenAddress } from "@/frontend/lib/format";
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 export function OnboardingUsernameModal() {
-  const { walletAddress, needsUsername, checkingProfile, onboarding, completeOnboarding } =
+  const { walletAddress, needsUsername, checkingProfile, onboarding, completeOnboarding, connectModalOpen } =
     useTwoBlockAuth();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  if (!walletAddress || checkingProfile || !needsUsername) return null;
+  if (!walletAddress || checkingProfile || !needsUsername || connectModalOpen) return null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
